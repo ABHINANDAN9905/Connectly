@@ -1,0 +1,4 @@
+Auth removal implemented: 
+- Backend: removed /api/auth mounting, removed protectRoute from user & chat routes.
+- Frontend: removed auth-gated routes and redirects in App.jsx.
+
