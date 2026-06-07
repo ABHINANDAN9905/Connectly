@@ -18,21 +18,10 @@ const PORT = process.env.PORT || 5005;
 
 const __dirname = path.resolve();
 
-const allowedOrigins = [
-  process.env.CLIENT_URL,
-  "http://localhost:5173",
-  "http://127.0.0.1:5173",
-].filter(Boolean);
-
+// CORS
 app.use(
   cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-
-      callback(new Error(`CORS blocked origin: ${origin}`));
-    },
+    origin: true,
     credentials: true,
   })
 );
