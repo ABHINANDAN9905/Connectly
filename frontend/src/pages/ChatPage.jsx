@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState, useContext } from "react";
 import { useParams } from "react-router-dom";
 import useAuthUser from "../hooks/useAuthUser";
 import { useQuery } from "@tanstack/react-query";
@@ -12,127 +12,134 @@ import {
   Thread,
   Window,
 } from "stream-chat-react";
-import { StreamChat } from "stream-chat";
 import toast from "react-hot-toast";
 import ChatLoader from "../components/ChatLoader";
 import CallButton from "../components/CallButton";
+import { NotificationContext } from "../contexts/notificationContext";
+
 const STREAM_API_KEY = import.meta.env.VITE_STREAM_API_KEY;
+
 const ChatPage = () => {
   const { id: targetUserId } = useParams();
-  const [chatClient, setChatClient] = useState(null);
-  const [channel, setChannel] = useState(null);
-  const clientRef = useRef(null);
-  const channelRef = useRef(null);
-  const [loading, setLoading] = useState(true);
   const { authUser } = useAuthUser();
   const { data: tokenData } = useQuery({
     queryKey: ["streamToken"],
     queryFn: getStreamToken,
-    enabled: !!authUser, // only fetch token if authUser exists, otherwise skip until we have authUser data
+    enabled: !!authUser,
   });
+
+  // Pull the shared client + notification helpers from context
+  const {
+    chatClient: sharedClient,
+    isReady,
+    setActiveChannelId,
+    markChannelRead,
+    syncNotifications,
+  } = useContext(NotificationContext);
+
+  const [channel, setChannel] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const channelRef = useRef(null);
+  const channelIdRef = useRef(null);
+
+  // ── Open the channel once the shared client + token are ready ────────────
   useEffect(() => {
-    const initChat = async () => {
-      if (!tokenData?.token || !authUser) return;
-      if (clientRef.current && channelRef.current) return; // already initialized
+    if (!sharedClient || !isReady || !authUser || !targetUserId) return;
+
+    // Prevent re-opening the same channel
+    const channelId = [authUser._id, targetUserId].sort().join("-");
+    if (channelIdRef.current === channelId && channelRef.current) return;
+
+    const openChannel = async () => {
+      setLoading(true);
       try {
-        console.log("Initializing stream chat client...");
-        // create singleton client instance and store in ref
-        const client = clientRef.current || StreamChat.getInstance(STREAM_API_KEY);
-        clientRef.current = client;
-        // If client already connected as the same user, skip reconnect
-        if (client.userID !== authUser._id) {
-          // if connected as other user, disconnect first
-          if (client.userID) {
-            try {
-              await client.disconnectUser();
-            } catch (e) {
-              console.warn("Failed to disconnect previous Stream user:", e?.message || e);
-            }
-          }
-          await client.connectUser(
-            {
-              id: authUser._id,
-              name: authUser.fullName,
-              image: authUser.profilePic,
-            },
-            tokenData.token
+        // Upsert current user in Stream (backend helper)
+        try {
+          await fetch(
+            `${import.meta.env.VITE_API_BASE_URL || "http://localhost:5005/api"}/chat/upsert/${authUser._id}`,
+            { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" } }
           );
-        }
-        const channelId = [authUser._id, targetUserId].sort().join("-");
-        // you and me
-        // if i start the chat => channelId: [myId, yourId]
-        // if you start the chat => channelId: [yourId, myId]  => [myId,yourId]
-        // ensure both users exist in Stream before creating the channel
-        try {
-          await fetch(`${import.meta.env.VITE_API_BASE_URL || "http://localhost:5005/api"}/chat/upsert/${authUser._id}`, {
-            method: "POST",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-          });
         } catch (e) {
-          console.warn("Failed to upsert current user in Stream:", e?.message || e);
+          console.warn("Upsert user failed:", e?.message);
         }
-        try {
-          await fetch(`${import.meta.env.VITE_API_BASE_URL || "http://localhost:5005/api"}/chat/upsert/${targetUserId}`, {
-            method: "POST",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-          });
-        } catch (e) {
-          console.warn("Failed to upsert target user in Stream:", e?.message || e);
-        }
-        const currChannel = client.channel("messaging", channelId, {
+
+        const ch = sharedClient.channel("messaging", channelId, {
           members: [authUser._id, targetUserId],
         });
-        await currChannel.watch();
-        await currChannel.markRead();
 
-        currChannel.on("message.new", () => {
-          // no notification sound or browser notification in chat page
-        });
-        channelRef.current = currChannel;
-        setChatClient(client);
-        setChannel(currChannel);
-      } catch (error) {
-        console.error("Error initializing chat:", error);
+        await ch.watch();
+
+        // Mark read immediately on open — clears the notification
+        await ch.markRead();
+
+        channelRef.current = ch;
+        channelIdRef.current = channelId;
+
+        // Tell NotificationContext which chat is currently open
+        setActiveChannelId(channelId);
+
+        // Sync the bell badge immediately
+        syncNotifications();
+
+        setChannel(ch);
+      } catch (err) {
+        console.error("Error opening channel:", err);
         toast.error("Could not connect to chat. Please try again.");
       } finally {
         setLoading(false);
       }
     };
-    initChat();
-    return () => {
-      if (channelRef.current?.off) {
-        channelRef.current.off("message.new");
-      }
-      // Do not disconnect the Stream user here.
-      // NotificationProvider relies on the shared Stream client staying connected.
-      // We only unsubscribe channel listeners in the cleanup above.
-      (async () => {
-        try {
-          // no-op
-        } catch (e) {
-          console.warn("Error during ChatPage cleanup:", e?.message || e);
-        }
-      })();
+
+    openChannel();
+  }, [sharedClient, isReady, authUser, targetUserId, setActiveChannelId, syncNotifications]);
+
+  // ── Mark as read whenever a new message arrives while this chat is open ──
+  useEffect(() => {
+    const ch = channelRef.current;
+    if (!ch) return;
+
+    const handleNewMessage = (event) => {
+      // Don't play sounds — NotificationContext won't either (activeChannelId is set)
+      // Just keep the channel read in real time
+      ch.markRead().then(() => syncNotifications()).catch(() => {});
     };
-  }, [tokenData, authUser, targetUserId]);
+
+    ch.on("message.new", handleNewMessage);
+    return () => ch.off("message.new", handleNewMessage);
+  }, [channel, syncNotifications]); // re-attach when channel changes
+
+  // ── Cleanup: clear activeChannelId when leaving the chat ─────────────────
+  useEffect(() => {
+    return () => {
+      setActiveChannelId(null);
+      // Final read mark + sync when navigating away
+      if (channelRef.current) {
+        channelRef.current
+          .markRead()
+          .then(() => syncNotifications())
+          .catch(() => {});
+      }
+    };
+  }, [setActiveChannelId, syncNotifications]);
 
   const handleVideoCall = () => {
     if (channel) {
       const callUrl = `${window.location.origin}/call/${channel.id}`;
-
-      channel.sendMessage({
-        text: `I've started a video call. Join me here: ${callUrl}`,
-      });
-
-      toast.success("Video call link sent successfully!");
+      channel.sendMessage({ text: `I've started a video call. Join me here: ${callUrl}` });
+      toast.success("Video call link sent!");
     }
   };
-  if (loading || !chatClient || !channel) return <ChatLoader />;
+
+  // Show loader until BOTH the shared client is ready AND the channel is open
+  if (!sharedClient || loading || !channel) return <ChatLoader />;
+
   return (
     <div className="h-[93vh]">
-      <Chat client={chatClient}>
+      {/* 
+        IMPORTANT: Use the shared chatClient from NotificationContext — not a local one.
+        This keeps the single Stream connection alive across the whole app.
+      */}
+      <Chat client={sharedClient}>
         <Channel channel={channel}>
           <div className="w-full relative">
             <CallButton handleVideoCall={handleVideoCall} />
@@ -148,4 +155,5 @@ const ChatPage = () => {
     </div>
   );
 };
+
 export default ChatPage;
