@@ -2,7 +2,7 @@ import axios from "axios";
 
 const BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||
-  (import.meta.env.MODE === "development" ? "https://connectly-fo5l.onrender.com" : "/api");
+  (import.meta.env.MODE === "development" ? "https://connectly-fo51.onrender.com/api" : "/api");
 
 export const axiosInstance = axios.create({
   baseURL: BASE_URL,
