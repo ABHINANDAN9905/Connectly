@@ -56,7 +56,7 @@ const ChatPage = () => {
         // Upsert current user in Stream (backend helper)
         try {
           await fetch(
-            `${import.meta.env.VITE_API_BASE_URL || "http://localhost:5005/api"}/chat/upsert/${authUser._id}`,
+            `${import.meta.env.VITE_API_BASE_URL || "https://connectly-backend-kw1s.onrender.com"}/chat/upsert/${authUser._id}`,
             { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" } }
           );
         } catch (e) {
