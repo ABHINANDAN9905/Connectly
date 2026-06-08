@@ -1,12 +1,21 @@
 import jwt from "jsonwebtoken";
 
-const isProduction = process.env.NODE_ENV === "production";
+const isDeployed = process.env.NODE_ENV === "production" || process.env.RENDER === "true";
+const isSecureCookie = process.env.COOKIE_SECURE
+  ? process.env.COOKIE_SECURE === "true"
+  : isDeployed;
 
 export const accessCookieOptions = {
   httpOnly: true,
-  sameSite: isProduction ? "none" : "lax",
-  secure: isProduction,
+  sameSite: isSecureCookie ? "none" : "lax",
+  secure: isSecureCookie,
   maxAge: 15 * 60 * 1000,
+};
+
+const clearCookieOptions = {
+  httpOnly: accessCookieOptions.httpOnly,
+  sameSite: accessCookieOptions.sameSite,
+  secure: accessCookieOptions.secure,
 };
 
 export const signAccessToken = (userId) =>
@@ -18,6 +27,5 @@ export const setAuthCookies = async (res, user) => {
 };
 
 export const clearAuthCookies = (res) => {
-  res.clearCookie("jwt");
+  res.clearCookie("jwt", clearCookieOptions);
 };
-
