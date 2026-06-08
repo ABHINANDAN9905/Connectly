@@ -13,7 +13,7 @@ import dns from "dns";
 dns.setServers(["1.1.1.1", "8.8.8.8"]);
 
 const app = express();
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 5005;
 
 const __dirname = path.resolve();
 
