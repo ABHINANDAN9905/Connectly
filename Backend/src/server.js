@@ -19,7 +19,7 @@ const __dirname = path.resolve();
 
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: "https://connectly-frontend-be24.onrender.com",
     credentials: true, // allow frontend to send cookies
   })
 );
