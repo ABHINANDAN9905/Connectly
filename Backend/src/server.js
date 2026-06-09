@@ -3,6 +3,7 @@ import "dotenv/config";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import path from "path";
+import fs from "fs";
 
 import authRoutes from "./routes/auth.route.js";
 import userRoutes from "./routes/user.route.js";
@@ -19,8 +20,8 @@ const __dirname = path.resolve();
 
 app.use(
   cors({
-    origin: "https://connectly-frontend-be24.onrender.com",
-    credentials: true, // allow frontend to send cookies
+    origin: process.env.FRONTEND_URL || "https://connectly-frontend-be24.onrender.com",
+    credentials: true,
   })
 );
 
@@ -31,12 +32,22 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/chat", chatRoutes);
 
+// Serve frontend only if dist folder actually exists (monorepo local build)
+// On Render, frontend is a separate service — so we skip this safely
 if (process.env.NODE_ENV === "production") {
-  app.use(express.static(path.join(__dirname, "../frontend/dist")));
+  const frontendDist = path.join(__dirname, "../frontend/dist");
 
-  app.get("*", (req, res) => {
-    res.sendFile(path.join(__dirname, "../frontend", "dist", "index.html"));
-  });
+  if (fs.existsSync(frontendDist)) {
+    app.use(express.static(frontendDist));
+    app.get("*", (req, res) => {
+      res.sendFile(path.join(frontendDist, "index.html"));
+    });
+  } else {
+    // Frontend is deployed separately — just return 404 for unknown routes
+    app.get("*", (req, res) => {
+      res.status(404).json({ message: "API route not found" });
+    });
+  }
 }
 
 app.listen(PORT, () => {
