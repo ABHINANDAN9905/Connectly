@@ -8,11 +8,11 @@ const Layout = ({ children, showSidebar = false }) => {
   const isChatPage = location.pathname.startsWith("/chat");
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <div className="flex flex-1">
+    <div className={isChatPage ? "h-screen flex flex-col overflow-hidden" : "min-h-screen flex flex-col"}>
+      <div className="flex flex-1 overflow-hidden">
         {showSidebar && <Sidebar />}
 
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col overflow-hidden">
           <Navbar />
 
           <main
