@@ -2,45 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Chat Wrapper */
-.str-chat {
-  height: 100% !important;
-}
-
-/* Channel */
 .str-chat__channel {
   display: flex;
   align-items: center;
   justify-content: center;
   background: linear-gradient(to bottom, #c9e8c9, #b7e7bb);
-  height: 100% !important;
+  height: 100%;
 }
 
-/* Main Container */
 .str-chat__container {
   max-width: 1200px;
   width: 100%;
-  height: 100% !important; /* Changed from 80% */
+  height: 80% !important;
   margin: 0 auto !important;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   overflow: hidden;
 }
 
-/* Main Panel */
-.str-chat__main-panel {
-  height: 100% !important;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Messages Area */
-.str-chat__message-list {
-  flex: 1;
-  overflow-y: auto;
-}
-
-/* Messages */
 .str-chat__list {
   background-color: #ffffff;
   padding: 12px;
@@ -50,28 +29,78 @@
   display: none;
 }
 
-/* Input */
 .str-chat__message-input {
   border-top: 1px solid #ddd;
-  background: #fff;
 }
 
-/* Mobile Responsive */
+.str-chat,
+.str-chat__channel,
+.str-chat__main-panel {
+  height: 100%;
+}
+
+.str-chat__main-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.str-chat__message-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* ─── Mobile Responsive ─── */
+
 @media (max-width: 768px) {
-  .str-chat__container {
-    max-width: 100%;
-    border-radius: 0;
-    height: 100% !important;
+  .str-chat__channel {
+    align-items: flex-start;
+    background: #ffffff; /* green background white se replace */
   }
 
-  .str-chat__channel {
-    padding: 0;
+  .str-chat__container {
+    height: 100% !important; /* container poora height le */
+    max-width: 100%;
+    border-radius: 0;
+    box-shadow: none;
+    margin: 0 !important;
+  }
+
+  .str-chat__list {
+    padding: 8px;
   }
 
   .str-chat__message-input {
-    position: sticky;
-    bottom: 0;
-    z-index: 10;
-    background: #fff;
+    padding: 8px;
+    border-top: 1px solid #ddd;
+    padding-bottom: env(safe-area-inset-bottom, 8px);
+  }
+
+  .str-chat__message--me .str-chat__message-bubble {
+    max-width: 85%;
+  }
+
+  .str-chat__message-bubble {
+    max-width: 85%;
+    font-size: 14px;
+  }
+
+  .str-chat__avatar {
+    width: 28px !important;
+    height: 28px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .str-chat__channel {
+    background: #ffffff;
+  }
+
+  .str-chat__message-bubble {
+    max-width: 92%;
+    font-size: 13px;
+  }
+
+  .str-chat__message-input textarea {
+    font-size: 16px;
   }
 }
