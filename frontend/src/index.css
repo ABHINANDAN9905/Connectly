@@ -54,25 +54,39 @@
 @media (max-width: 768px) {
   .str-chat__channel {
     align-items: flex-start;
-    background: #ffffff; /* green background white se replace */
+    background: #ffffff;
+    height: 100%;
   }
 
   .str-chat__container {
-    height: 100% !important; /* container poora height le */
+    height: 100% !important;
     max-width: 100%;
     border-radius: 0;
     box-shadow: none;
     margin: 0 !important;
   }
 
+  .str-chat__main-panel {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
   .str-chat__list {
     padding: 8px;
+  }
+
+  .str-chat__message-list {
+    flex: 1;
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
   .str-chat__message-input {
     padding: 8px;
     border-top: 1px solid #ddd;
     padding-bottom: env(safe-area-inset-bottom, 8px);
+    flex-shrink: 0;
   }
 
   .str-chat__message--me .str-chat__message-bubble {
@@ -93,6 +107,7 @@
 @media (max-width: 480px) {
   .str-chat__channel {
     background: #ffffff;
+    height: 100%;
   }
 
   .str-chat__message-bubble {
