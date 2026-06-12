@@ -18,11 +18,10 @@ const Navbar = () => {
 
   const isChatPage = location.pathname?.startsWith("/chat");
   const { totalUnread, isReady } = useNotifications();
-
   const { logoutMutation } = useLogout();
 
   return (
-    <nav className="bg-base-200 border-b border-base-300 sticky top-0 z-30 h-16 flex items-center">
+    <nav className="bg-base-200 border-b border-base-300 relative z-30 h-16 flex items-center flex-shrink-0">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between w-full">
 
@@ -37,7 +36,6 @@ const Navbar = () => {
                 <ArrowLeft className="h-6 w-6 text-base-content opacity-70" />
               </button>
             )}
-
             {isChatPage && (
               <Link to="/" className="flex items-center gap-2.5">
                 <ShipWheelIcon className="size-9 text-primary" />
