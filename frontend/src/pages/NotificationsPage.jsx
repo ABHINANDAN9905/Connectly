@@ -90,7 +90,6 @@ const NotificationsPage = () => {
                       {/* Unread dot */}
                       <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-error border-2 border-base-200" />
                     </div>
-
                     {/* Content */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
@@ -126,7 +125,6 @@ const NotificationsPage = () => {
             </div>
           )}
         </section>
-
         {/* ── Friend Requests ──────────────────────────────────────────── */}
         {isLoading ? (
           <div className="flex justify-center py-4">
@@ -212,7 +210,6 @@ const NotificationsPage = () => {
                 </div>
               </section>
             )}
-
             {incomingRequests.length === 0 &&
               acceptedRequests.length === 0 &&
               isReady &&
@@ -223,5 +220,4 @@ const NotificationsPage = () => {
     </div>
   );
 };
-
 export default NotificationsPage;

@@ -1,14 +1,11 @@
 import axios from "axios";
-
 const BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||
   "https://connectly-backend-kw1s.onrender.com";
-
 export const axiosInstance = axios.create({
   baseURL: BASE_URL,
   withCredentials: true,
 });
-
 // Response interceptor to handle errors silently for auth checks
 axiosInstance.interceptors.response.use(
   (response) => response,
@@ -20,7 +17,6 @@ axiosInstance.interceptors.response.use(
     ) {
       return Promise.reject(error);
     }
-
     return Promise.reject(error);
   }
 );
