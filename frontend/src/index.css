@@ -2,24 +2,45 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Chat Wrapper */
+.str-chat {
+  height: 100% !important;
+}
+
+/* Channel */
 .str-chat__channel {
   display: flex;
   align-items: center;
   justify-content: center;
   background: linear-gradient(to bottom, #c9e8c9, #b7e7bb);
-  height: 100%;
+  height: 100% !important;
 }
 
+/* Main Container */
 .str-chat__container {
   max-width: 1200px;
   width: 100%;
-  height: 80% !important;
+  height: 100% !important; /* Changed from 80% */
   margin: 0 auto !important;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   overflow: hidden;
 }
 
+/* Main Panel */
+.str-chat__main-panel {
+  height: 100% !important;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Messages Area */
+.str-chat__message-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Messages */
 .str-chat__list {
   background-color: #ffffff;
   padding: 12px;
@@ -29,6 +50,28 @@
   display: none;
 }
 
+/* Input */
 .str-chat__message-input {
   border-top: 1px solid #ddd;
+  background: #fff;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .str-chat__container {
+    max-width: 100%;
+    border-radius: 0;
+    height: 100% !important;
+  }
+
+  .str-chat__channel {
+    padding: 0;
+  }
+
+  .str-chat__message-input {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    background: #fff;
+  }
 }

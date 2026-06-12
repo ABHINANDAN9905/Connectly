@@ -134,18 +134,21 @@ const ChatPage = () => {
   if (!sharedClient || loading || !channel) return <ChatLoader />;
 
   return (
-    <div className="h-[93vh]">
+    <div className="h-[calc(100dvh-64px)] overflow-hidden">
       {/* 
         IMPORTANT: Use the shared chatClient from NotificationContext — not a local one.
         This keeps the single Stream connection alive across the whole app.
       */}
       <Chat client={sharedClient}>
         <Channel channel={channel}>
-          <div className="w-full relative">
+          <div className="w-full h-full relative flex flex-col">
             <CallButton handleVideoCall={handleVideoCall} />
             <Window>
               <ChannelHeader />
+              <div className = "flex- 1 overflow -hidden"> 
               <MessageList />
+              </div>
+              <div className = "border-t bg-base-100" />
               <MessageInput focus />
             </Window>
           </div>
