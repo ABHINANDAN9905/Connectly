@@ -27,7 +27,6 @@ const ChatPage = () => {
     queryFn: getStreamToken,
     enabled: !!authUser,
   });
-
   const {
     chatClient: sharedClient,
     isReady,
@@ -35,7 +34,6 @@ const ChatPage = () => {
     markChannelRead,
     syncNotifications,
   } = useContext(NotificationContext);
-
   const [channel, setChannel] = useState(null);
   const [loading, setLoading] = useState(true);
   const channelRef = useRef(null);
@@ -43,10 +41,8 @@ const ChatPage = () => {
 
   useEffect(() => {
     if (!sharedClient || !isReady || !authUser || !targetUserId) return;
-
     const channelId = [authUser._id, targetUserId].sort().join("-");
     if (channelIdRef.current === channelId && channelRef.current) return;
-
     const openChannel = async () => {
       setLoading(true);
       try {
@@ -58,17 +54,13 @@ const ChatPage = () => {
         } catch (e) {
           console.warn("Upsert user failed:", e?.message);
         }
-
         const ch = sharedClient.channel("messaging", channelId, {
           members: [authUser._id, targetUserId],
         });
-
         await ch.watch();
         await ch.markRead();
-
         channelRef.current = ch;
         channelIdRef.current = channelId;
-
         setActiveChannelId(channelId);
         syncNotifications();
         setChannel(ch);
@@ -79,18 +71,15 @@ const ChatPage = () => {
         setLoading(false);
       }
     };
-
     openChannel();
   }, [sharedClient, isReady, authUser, targetUserId, setActiveChannelId, syncNotifications]);
 
   useEffect(() => {
     const ch = channelRef.current;
     if (!ch) return;
-
     const handleNewMessage = (event) => {
       ch.markRead().then(() => syncNotifications()).catch(() => {});
     };
-
     ch.on("message.new", handleNewMessage);
     return () => ch.off("message.new", handleNewMessage);
   }, [channel, syncNotifications]);
@@ -118,19 +107,18 @@ const ChatPage = () => {
   if (!sharedClient || loading || !channel) return <ChatLoader />;
 
   return (
-    <div className="h-[calc(100dvh-64px)] overflow-hidden">
+    <div className="h-[calc(100dvh-64px)] w-full">
       <Chat client={sharedClient}>
         <Channel channel={channel}>
-          <div className="w-full h-full relative flex flex-col overflow-hidden">
-            <CallButton handleVideoCall={handleVideoCall} />
-            <Window>
-              <ChannelHeader />
-              <div className="flex-1 overflow-hidden">
+          <div className="h-full w-full max-w-6xl mx-auto p-2 md:p-4">
+            <div className="h-full bg-base-100 rounded-xl shadow-lg overflow-hidden relative">
+              <CallButton handleVideoCall={handleVideoCall} />
+              <Window>
+                <ChannelHeader />
                 <MessageList />
-              </div>
-              <div className="border-t bg-base-100" />
-              <MessageInput focus />
-            </Window>
+                <MessageInput focus />
+              </Window>
+            </div>
           </div>
           <Thread />
         </Channel>

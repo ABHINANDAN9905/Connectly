@@ -2,12 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Base Stream Chat Layout ─── */
+
+.str-chat,
+.str-chat-channel,
+.str-chat__channel,
+.str-chat__container,
+.str-chat__main-panel,
+.str-chat__window {
+  height: 100% !important;
+}
+
 .str-chat__channel {
   display: flex;
   align-items: center;
   justify-content: center;
   background: linear-gradient(to bottom, #c9e8c9, #b7e7bb);
-  height: 100%;
 }
 
 .str-chat__container {
@@ -20,6 +30,28 @@
   overflow: hidden;
 }
 
+.str-chat__main-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.str-chat__window {
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* ─── Channel Header ─── */
+
+.str-chat__channel-header {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 100 !important;
+  background: white !important;
+  flex-shrink: 0;
+}
+
+/* ─── Message List ─── */
+
 .str-chat__list {
   background-color: #ffffff;
   padding: 12px;
@@ -29,33 +61,30 @@
   display: none;
 }
 
-.str-chat__message-input {
-  border-top: 1px solid #ddd;
-}
-
-.str-chat,
-.str-chat__channel,
-.str-chat__main-panel {
-  height: 100%;
-}
-
-.str-chat__main-panel {
-  display: flex;
-  flex-direction: column;
-}
-
 .str-chat__message-list {
-  flex: 1;
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
   overflow-y: auto;
 }
 
-/* ─── Mobile Responsive ─── */
+.str-chat__message-simple-content {
+  max-width: 80% !important;
+}
+
+/* ─── Message Input ─── */
+
+.str-chat__message-input {
+  border-top: 1px solid #e5e7eb;
+  background: white;
+  flex-shrink: 0;
+}
+
+/* ─── Mobile: 768px and below ─── */
 
 @media (max-width: 768px) {
   .str-chat__channel {
     align-items: flex-start;
     background: #ffffff;
-    height: 100%;
   }
 
   .str-chat__container {
@@ -66,34 +95,17 @@
     margin: 0 !important;
   }
 
-  .str-chat__main-panel {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-  }
-
   .str-chat__list {
     padding: 8px;
   }
 
-  .str-chat__message-list {
-    flex: 1;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-  }
-
   .str-chat__message-input {
     padding: 8px;
-    border-top: 1px solid #ddd;
     padding-bottom: env(safe-area-inset-bottom, 8px);
-    flex-shrink: 0;
   }
 
+  .str-chat__message-bubble,
   .str-chat__message--me .str-chat__message-bubble {
-    max-width: 85%;
-  }
-
-  .str-chat__message-bubble {
     max-width: 85%;
     font-size: 14px;
   }
@@ -104,10 +116,11 @@
   }
 }
 
+/* ─── Mobile: 480px and below ─── */
+
 @media (max-width: 480px) {
   .str-chat__channel {
     background: #ffffff;
-    height: 100%;
   }
 
   .str-chat__message-bubble {
@@ -116,6 +129,6 @@
   }
 
   .str-chat__message-input textarea {
-    font-size: 16px;
+    font-size: 16px; /* Prevents iOS auto-zoom */
   }
 }
