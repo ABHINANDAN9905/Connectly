@@ -95,12 +95,6 @@
   display: none !important;
 }
 
-/* ─── Body fix ─── */
-body {
-  background: #ffffff !important;
-  overflow: hidden;
-}
-
 /* ─── Mobile ─── */
 @media (max-width: 768px) {
   .str-chat__list,
