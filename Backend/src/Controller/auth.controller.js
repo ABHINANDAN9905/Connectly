@@ -70,7 +70,7 @@ export async function register(req, res) {
     }
 
     const verificationToken = createToken();
-    const verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const verificationTokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
     const user = await User.create({
       fullName,
