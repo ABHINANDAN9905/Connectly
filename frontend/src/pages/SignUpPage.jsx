@@ -135,7 +135,7 @@ const SignUpPage = () => {
                 <button
                   type="button"
                   onClick={() => {
-                    window.location.href = `${import.meta.env.VITE_API_BASE_URL}/api/auth/google`;
+                    window.location.href = `${import.meta.env.VITE_API_BASE_URL}/auth/google`;
                   }}
                   className="btn btn-outline w-full gap-2"
                 >
