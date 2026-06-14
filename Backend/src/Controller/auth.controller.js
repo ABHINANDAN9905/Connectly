@@ -52,6 +52,12 @@ export async function register(req, res) {
       return res.status(400).json({ message: "Password must be at least 6 characters" });
     }
 
+    // ← Email validation add kiya
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ message: "Please enter a valid email address" });
+    }
+
     const cleanUsername = normalizeUsername(username);
     if (cleanUsername.length < 3) {
       return res.status(400).json({ message: "Username must be at least 3 characters" });
