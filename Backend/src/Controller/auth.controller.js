@@ -2,12 +2,11 @@ import crypto from "crypto";
 import { upsertStreamUser } from "../lib/stream.js";
 import { setAuthCookies, clearAuthCookies } from "../lib/tokens.js";
 import User from "../models/User.js";
-
+import { sendVerificationEmail } from "../lib/email.js";
 
 const publicUserSelect = "-password -refreshToken -emailVerificationToken -passwordResetToken";
 
 const createToken = () => crypto.randomBytes(32).toString("hex");
-
 
 const normalizeUsername = (username = "") =>
   username.trim().toLowerCase().replace(/[^a-z0-9_]/g, "");
@@ -24,8 +23,6 @@ const generateUsername = async (nameOrEmail = "pinwell") => {
 
   return username;
 };
-
-
 
 const syncStreamUser = async (user) => {
   try {
@@ -51,7 +48,6 @@ export async function register(req, res) {
       });
     }
 
-
     if (password.length < 6) {
       return res.status(400).json({ message: "Password must be at least 6 characters" });
     }
@@ -73,6 +69,9 @@ export async function register(req, res) {
       return res.status(409).json({ message: "Username, email, or phone number already exists" });
     }
 
+    const verificationToken = createToken();
+    const verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
     const user = await User.create({
       fullName,
       username: cleanUsername,
@@ -80,15 +79,19 @@ export async function register(req, res) {
       password,
       phoneNumber: phoneNumber || undefined,
       profilePic: profilePic || "",
+      isVerified: false,
+      verificationToken,
+      verificationTokenExpiry,
       isOnboarded: false,
     });
 
     await syncStreamUser(user);
+    await sendVerificationEmail(user.email, verificationToken);
 
-    await setAuthCookies(res, user);
-    const safeUser = await getSafeUser(user._id);
-
-    res.status(201).json({ success: true, user: safeUser });
+    res.status(201).json({
+      success: true,
+      message: "Registration successful. Please check your email and verify your account.",
+    });
 
   } catch (error) {
     console.log("Error in register controller", error);
@@ -122,6 +125,10 @@ export async function login(req, res) {
     const isPasswordCorrect = await user.matchPassword(password);
     if (!isPasswordCorrect) return res.status(401).json({ message: "Invalid credentials" });
 
+    if (!user.isVerified) {
+      return res.status(401).json({ message: "Please verify your email first" });
+    }
+
     if (!user.isActive) {
       user.isActive = true;
       user.deactivatedAt = null;
@@ -138,12 +145,8 @@ export async function login(req, res) {
 }
 
 export async function logout(req, res) {
-
   try {
-    // token is stored in a httpOnly cookie; clearing it is enough.
-    // refresh token support removed in auth revert.
     clearAuthCookies(res);
-
     res.status(200).json({ success: true, message: "Logout successful" });
   } catch (error) {
     clearAuthCookies(res);
@@ -152,7 +155,6 @@ export async function logout(req, res) {
 }
 
 export async function uploadProfilePicture(req, res) {
-
   if (!req.file) return res.status(400).json({ message: "Profile picture is required" });
 
   const profilePic = `${req.protocol}://${req.get("host")}/uploads/profile-pics/${req.file.filename}`;
@@ -200,5 +202,36 @@ export async function onboard(req, res) {
   } catch (error) {
     console.error("Onboarding error:", error);
     res.status(500).json({ message: "Internal Server Error" });
+  }
+}
+
+export async function verifyEmail(req, res) {
+  try {
+    const { token } = req.params;
+
+    const user = await User.findOne({
+      verificationToken: token,
+      verificationTokenExpiry: { $gt: new Date() },
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        message: "Invalid or expired verification link",
+      });
+    }
+
+    user.isVerified = true;
+    user.verificationToken = null;
+    user.verificationTokenExpiry = null;
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Email verified successfully",
+    });
+
+  } catch (error) {
+    console.log("Verify Email Error:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 }

@@ -9,6 +9,7 @@ import ProfilePage from "./pages/ProfilePage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import SignUpPage from "./pages/SignUpPage.jsx";
 import ProfileSetupPage from "./pages/ProfileSetupPage.jsx";
+import VerifyEmailPage from "./pages/VerifyEmailPage.jsx";
 
 
 import { Toaster } from "react-hot-toast";
@@ -148,8 +149,12 @@ const App = () => {
               </ProtectedRoute>
             }
           />
-        </Routes>
 
+          <Route
+            path="/verify-email/:token"
+            element={<VerifyEmailPage />}
+          />
+        </Routes>
 
       <Toaster />
     </div>

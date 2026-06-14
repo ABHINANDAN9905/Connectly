@@ -66,6 +66,26 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    isverified: {
+      type: Boolean,
+      default: false,
+    },
+    verificationToken: {
+      type: String,
+      default: null,
+    },
+    verificationTokenExpiry: {
+      type: Date,
+      default: null,
+    },
+    resetPasswordToken: {
+      type: String,
+      default: null,
+    },
+    resetPasswordTokenExpiry: {
+      type: Date,
+      default: null,
+    },
 
     friends: [
       {

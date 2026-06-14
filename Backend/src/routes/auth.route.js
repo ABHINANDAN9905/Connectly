@@ -1,6 +1,13 @@
 import express from "express";
 import rateLimit from "express-rate-limit";
-import { login, logout, onboard, register, uploadProfilePicture } from "../Controller/auth.controller.js";
+import {
+  login,
+  logout,
+  onboard,
+  register,
+  verifyEmail,
+  uploadProfilePicture,
+} from "../Controller/auth.controller.js";
 import { protectRoute } from "../middleware/auth.middleware.js";
 import { uploadProfilePic } from "../middleware/upload.middleware.js";
 
@@ -18,7 +25,7 @@ router.post("/register", loginLimiter, register);
 router.post("/signup", loginLimiter, register);
 router.post("/login", loginLimiter, login);
 router.post("/logout", logout);
-
+router.get("/verify-email/:token", verifyEmail);
 
 router.post(
   "/upload-profile-picture",
@@ -29,11 +36,8 @@ router.post(
 
 router.post("/onboarding", protectRoute, onboard);
 
-// check if user is logged in
 router.get("/me", protectRoute, (req, res) => {
   res.status(200).json({ success: true, user: req.user });
 });
 
-
 export default router;
-
