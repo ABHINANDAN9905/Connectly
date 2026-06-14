@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
+import { axiosInstance } from "../lib/axios";  // ← axiosInstance use karo
 
 const VerifyEmailPage = () => {
   const { token } = useParams();
@@ -10,9 +10,7 @@ const VerifyEmailPage = () => {
   useEffect(() => {
     const verifyEmail = async () => {
       try {
-        await axios.get(
-          `${import.meta.env.VITE_API_URL}/auth/verify-email/${token}`
-        );
+        await axiosInstance.get(`/api/auth/verify-email/${token}`);  // ← sahi path
         setMessage("Email verified successfully!");
         setTimeout(() => {
           navigate("/login");
@@ -23,6 +21,7 @@ const VerifyEmailPage = () => {
     };
     verifyEmail();
   }, [token, navigate]);
+
   return (
     <div className="min-h-screen flex items-center justify-center">
       <h2 className="text-xl font-semibold">{message}</h2>
