@@ -9,8 +9,8 @@ const VerifyEmailPage = () => {
 
   useEffect(() => {
     const verifyEmail = async () => {
-      try:
-        const res = await axios.get(
+      try {
+        await axios.get(
           `https://connectly-backend-kw1s.onrender.com/api/auth/verify-email/${token}`
         );
         setMessage("Email verified successfully! Redirecting to login...");
