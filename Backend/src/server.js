@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import path from "path";
 import fs from "fs";
+import passport from "./lib/passport.js";  // ← add karo
 
 import authRoutes from "./routes/auth.route.js";
 import userRoutes from "./routes/user.route.js";
@@ -27,13 +28,12 @@ app.use(
 
 app.use(express.json());
 app.use(cookieParser());
+app.use(passport.initialize());  // ← add karo
 
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/chat", chatRoutes);
 
-// Serve frontend only if dist folder actually exists (monorepo local build)
-// On Render, frontend is a separate service — so we skip this safely
 if (process.env.NODE_ENV === "production") {
   const frontendDist = path.join(__dirname, "../frontend/dist");
 
@@ -43,7 +43,6 @@ if (process.env.NODE_ENV === "production") {
       res.sendFile(path.join(frontendDist, "index.html"));
     });
   } else {
-    // Frontend is deployed separately — just return 404 for unknown routes
     app.get("*", (req, res) => {
       res.status(404).json({ message: "API route not found" });
     });
