@@ -6,7 +6,7 @@ export const sendVerificationEmail = async (email, token) => {
   await axios.post(
     "https://api.brevo.com/v3/smtp/email",
     {
-      sender: { name: "Connectly", email: "aeace9001@smtp-brevo.com" },
+      sender: { name: "Connectly", email: "kumarabhinandan1307@gmail.com" },
       to: [{ email }],
       subject: "Verify Your Connectly Account",
       htmlContent: `
