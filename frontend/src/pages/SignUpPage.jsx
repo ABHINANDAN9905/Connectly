@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ShipWheelIcon } from "lucide-react";
 import { Link } from "react-router";
+import { FcGoogle } from "react-icons/fc";
 import useSignUp from "../hooks/useSignUp";
 
 const SignUpPage = () => {
@@ -126,6 +127,20 @@ const SignUpPage = () => {
                   ) : (
                     "Create Account"
                   )}
+                </button>
+
+                {/* Google Signup Button */}
+                <div className="divider">OR</div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.location.href = `${import.meta.env.VITE_API_BASE_URL}/api/auth/google`;
+                  }}
+                  className="btn btn-outline w-full gap-2"
+                >
+                  <FcGoogle className="w-5 h-5" />
+                  Continue with Google
                 </button>
 
                 <div className="text-center mt-4">
