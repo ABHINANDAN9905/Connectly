@@ -33,7 +33,6 @@ const userSchema = new mongoose.Schema(
       type: String,
       minlength: 6,
     },
-
     bio: {
       type: String,
       default: "",
@@ -66,7 +65,7 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
-    isverified: {
+    isVerified: {         // ← fix: V uppercase
       type: Boolean,
       default: false,
     },
@@ -86,7 +85,6 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
-
     friends: [
       {
         type: mongoose.Schema.Types.ObjectId,
