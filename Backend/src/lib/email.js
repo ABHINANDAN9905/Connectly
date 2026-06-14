@@ -1,26 +1,25 @@
-import nodemailer from "nodemailer";
-
-const transporter = nodemailer.createTransport({
-  host: "smtp-relay.brevo.com",
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+import axios from "axios";
 
 export const sendVerificationEmail = async (email, token) => {
   const verifyLink = `${process.env.CLIENT_URL}/verify-email/${token}`;
 
-  await transporter.sendMail({
-    from: process.env.EMAIL_USER,
-    to: email,
-    subject: "Verify Your Connectly Account",
-    html: `
-      <h2>Welcome to Connectly 🚀</h2>
-      <p>Please verify your email address.</p>
-      <a href="${verifyLink}">Verify Email</a>
-    `,
-  });
+  await axios.post(
+    "https://api.brevo.com/v3/smtp/email",
+    {
+      sender: { name: "Connectly", email: "aeace9001@smtp-brevo.com" },
+      to: [{ email }],
+      subject: "Verify Your Connectly Account",
+      htmlContent: `
+        <h2>Welcome to Connectly 🚀</h2>
+        <p>Please verify your email address.</p>
+        <a href="${verifyLink}">Verify Email</a>
+      `,
+    },
+    {
+      headers: {
+        "api-key": process.env.BREVO_API_KEY,
+        "Content-Type": "application/json",
+      },
+    }
+  );
 };
