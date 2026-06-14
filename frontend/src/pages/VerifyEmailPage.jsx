@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { axiosInstance } from "../lib/axios";
+import axios from "axios";
 
 const VerifyEmailPage = () => {
   const { token } = useParams();
@@ -9,8 +9,10 @@ const VerifyEmailPage = () => {
 
   useEffect(() => {
     const verifyEmail = async () => {
-      try {
-        await axiosInstance.get(`/api/auth/verify-email/${token}`);
+      try:
+        const res = await axios.get(
+          `https://connectly-backend-kw1s.onrender.com/api/auth/verify-email/${token}`
+        );
         setMessage("Email verified successfully! Redirecting to login...");
         setTimeout(() => navigate("/login"), 2000);
       } catch (error) {
