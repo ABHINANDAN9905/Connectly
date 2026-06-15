@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { StreamChat } from "stream-chat";
+import { StreamVideoClient } from "@stream-io/video-react-sdk";
 import toast from "react-hot-toast";
 import { getStreamToken } from "../lib/api";
 import useAuthUser from "../hooks/useAuthUser";
@@ -82,14 +83,23 @@ export const NotificationProvider = ({ children }) => {
     retry: false,
   });
 
-  // Shared Stream client — single instance across the whole app
+  // Shared Stream chat client — single instance across the whole app
   const clientRef = useRef(null);
   const listenersAttached = useRef(false);
 
+  // Shared Stream video client — for ringing calls
+  const videoClientRef = useRef(null);
+  const videoListenersAttached = useRef(false);
+  const ringtoneRef = useRef(null);
+
   const [chatClient, setChatClient] = useState(null);
+  const [videoClient, setVideoClient] = useState(null);
   const [isReady, setIsReady] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [totalUnread, setTotalUnread] = useState(0);
+
+  // Incoming call state
+  const [incomingCall, setIncomingCall] = useState(null);
 
   // activeChannelId lives in a ref so event handlers never go stale
   const activeChannelIdRef = useRef(null);
@@ -126,19 +136,16 @@ export const NotificationProvider = ({ children }) => {
       if (!client || !channelId) return;
 
       try {
-        // Use the already-watched channel from activeChannels if available
         const channel =
           client.activeChannels[`messaging:${channelId}`] ||
           client.channel("messaging", channelId);
 
         await channel.markRead();
-        // Optimistically remove it from the list immediately
         setNotifications((prev) => prev.filter((n) => n.channelId !== channelId));
         setTotalUnread((prev) => {
-          const removed = prev; // will be corrected by syncNotifications below
+          const removed = prev;
           return Math.max(0, removed);
         });
-        // Then do a full sync to make sure counts are accurate
         syncNotifications();
       } catch (err) {
         console.warn("markChannelRead failed:", err);
@@ -147,6 +154,47 @@ export const NotificationProvider = ({ children }) => {
     [syncNotifications]
   );
 
+  // ── Ringtone controls ─────────────────────────────────────────────────────
+  const startRingtone = useCallback(() => {
+    try {
+      if (!ringtoneRef.current) {
+        ringtoneRef.current = new Audio("/ringtone.mp3");
+        ringtoneRef.current.loop = true;
+      }
+      ringtoneRef.current.currentTime = 0;
+      ringtoneRef.current.play().catch(() => {});
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const stopRingtone = useCallback(() => {
+    if (ringtoneRef.current) {
+      ringtoneRef.current.pause();
+      ringtoneRef.current.currentTime = 0;
+    }
+  }, []);
+
+  // ── Accept / decline incoming call ───────────────────────────────────────
+  const acceptIncomingCall = useCallback(() => {
+    stopRingtone();
+    const call = incomingCall;
+    setIncomingCall(null);
+    return call;
+  }, [incomingCall, stopRingtone]);
+
+  const declineIncomingCall = useCallback(async () => {
+    stopRingtone();
+    if (incomingCall) {
+      try {
+        await incomingCall.leave({ reject: true });
+      } catch (err) {
+        console.warn("Failed to reject call:", err);
+      }
+    }
+    setIncomingCall(null);
+  }, [incomingCall, stopRingtone]);
+
   // ── Request browser notification permission once ──────────────────────────
   useEffect(() => {
     if ("Notification" in window && Notification.permission === "default") {
@@ -154,7 +202,7 @@ export const NotificationProvider = ({ children }) => {
     }
   }, []);
 
-  // ── Main Stream initialisation ────────────────────────────────────────────
+  // ── Main Stream initialisation (chat + video) ────────────────────────────
   useEffect(() => {
     if (!authUser || authLoading || tokenLoading || !tokenData?.token) return;
     if (!STREAM_API_KEY) {
@@ -163,14 +211,14 @@ export const NotificationProvider = ({ children }) => {
     }
 
     let detachListeners = () => {};
+    let detachVideoListeners = () => {};
 
     const init = async () => {
       try {
-        // Reuse singleton
+        // Reuse singleton chat client
         const client = StreamChat.getInstance(STREAM_API_KEY);
         clientRef.current = client;
 
-        // Connect only if not already connected as this user
         if (client.userID !== authUser._id) {
           if (client.userID) {
             try { await client.disconnectUser(); } catch { /* ignore */ }
@@ -183,25 +231,20 @@ export const NotificationProvider = ({ children }) => {
 
         setChatClient(client);
 
-        // Pre-fetch channels so countUnread() works immediately
         await client.queryChannels(
           { type: "messaging", members: { $in: [authUser._id] } },
           [{ last_message_at: -1 }],
           { watch: true, state: true, presence: true, limit: 30 }
         );
 
-        // ── Attach event listeners exactly once ──────────────────────────
+        // ── Chat event listeners exactly once ────────────────────────────
         if (!listenersAttached.current) {
           listenersAttached.current = true;
 
-          // New message from someone else
           const onNewMessage = (event) => {
-            // Ignore own messages
             if (event.user?.id === authUser._id) return;
 
             const incomingCid = event.channel_id || event.cid;
-
-            // Ignore if this chat is already open and visible
             const isOpen =
               incomingCid &&
               incomingCid === activeChannelIdRef.current &&
@@ -224,7 +267,6 @@ export const NotificationProvider = ({ children }) => {
             toast(`${senderName}: ${preview}`, { icon: "💬", duration: 4000 });
           };
 
-          // Any read/unread event — just resync
           const onReadChange = () => syncNotifications();
 
           client.on("message.new", onNewMessage);
@@ -243,6 +285,58 @@ export const NotificationProvider = ({ children }) => {
           };
         }
 
+        // ── Global Video client for ringing calls ────────────────────────
+        let vClient = videoClientRef.current;
+        if (!vClient || vClient.streamClient?.userID !== authUser._id) {
+          if (vClient) {
+            try { await vClient.disconnectUser(); } catch { /* ignore */ }
+          }
+          vClient = new StreamVideoClient({
+            apiKey: STREAM_API_KEY,
+            user: { id: authUser._id, name: authUser.fullName, image: authUser.profilePic },
+            token: tokenData.token,
+          });
+          videoClientRef.current = vClient;
+        }
+        setVideoClient(vClient);
+
+        if (!videoListenersAttached.current) {
+          videoListenersAttached.current = true;
+
+          const onCallRinging = (call) => {
+            // Don't show popup for calls created by self
+            if (call.state.createdBy?.id === authUser._id) return;
+            setIncomingCall(call);
+            startRingtone();
+
+            if (document.visibilityState !== "visible") {
+              showBrowserNotification(
+                call.state.createdBy?.name || "Incoming call",
+                call.type === "audio_room" || call.id?.includes("audio")
+                  ? "Voice call"
+                  : "Video call",
+                call.state.createdBy?.image || "/favicon.ico"
+              );
+            }
+          };
+
+          const onCallEnded = () => {
+            stopRingtone();
+            setIncomingCall(null);
+          };
+
+          vClient.on("call.ring", onCallRinging);
+          vClient.on("call.rejected", onCallEnded);
+          vClient.on("call.ended", onCallEnded);
+
+          detachVideoListeners = () => {
+            vClient.off("call.ring", onCallRinging);
+            vClient.off("call.rejected", onCallEnded);
+            vClient.off("call.ended", onCallEnded);
+            videoListenersAttached.current = false;
+          };
+        }
+
         syncNotifications();
         setIsReady(true);
       } catch (err) {
@@ -251,13 +345,17 @@ export const NotificationProvider = ({ children }) => {
     };
 
     init();
-    return () => detachListeners();
+    return () => {
+      detachListeners();
+      detachVideoListeners();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authUser?._id, tokenData?.token]);
 
   const value = useMemo(
     () => ({
       chatClient,
+      videoClient,
       isReady,
       notifications,
       totalUnread,
@@ -265,13 +363,34 @@ export const NotificationProvider = ({ children }) => {
       setActiveChannelId,
       markChannelRead,
       syncNotifications,
+      incomingCall,
+      acceptIncomingCall,
+      declineIncomingCall,
     }),
-    [chatClient, isReady, notifications, totalUnread, activeChannelId, setActiveChannelId, markChannelRead, syncNotifications]
+    [
+      chatClient,
+      videoClient,
+      isReady,
+      notifications,
+      totalUnread,
+      activeChannelId,
+      setActiveChannelId,
+      markChannelRead,
+      syncNotifications,
+      incomingCall,
+      acceptIncomingCall,
+      declineIncomingCall,
+    ]
   );
 
   return (
     <NotificationContext.Provider value={value}>
       {children}
+      <IncomingCallModal />
     </NotificationContext.Provider>
   );
 };
+
+// ─── Incoming Call Modal (rendered inside provider) ──────────────────────────
+
+import IncomingCallModal from "../components/IncomingCallModal";

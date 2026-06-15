@@ -1,11 +1,8 @@
-import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useContext, useEffect, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import useAuthUser from "../hooks/useAuthUser";
-import { useQuery } from "@tanstack/react-query";
-import { getStreamToken } from "../lib/api";
 import {
   StreamVideo,
-  StreamVideoClient,
   StreamCall,
   CallControls,
   SpeakerLayout,
@@ -16,45 +13,30 @@ import {
 import "@stream-io/video-react-sdk/dist/css/styles.css";
 import toast from "react-hot-toast";
 import PageLoader from "../components/PageLoader";
-const STREAM_API_KEY = import.meta.env.VITE_STREAM_API_KEY;
+import { NotificationContext } from "../contexts/notificationContext";
+
 const CallPage = () => {
   const { id: callId } = useParams();
-  const [client, setClient] = useState(null);
+  const [searchParams] = useSearchParams();
+  const isAudioOnly = searchParams.get("audio") === "true";
+
   const [call, setCall] = useState(null);
   const [isConnecting, setIsConnecting] = useState(true);
   const { authUser, isLoading } = useAuthUser();
-  const { data: tokenData } = useQuery({
-    queryKey: ["streamToken"],
-    queryFn: getStreamToken,
-    enabled: !!authUser,
-  });
+  const { videoClient } = useContext(NotificationContext);
 
   useEffect(() => {
     const initCall = async () => {
-      if (!tokenData.token || !authUser || !callId) return;
+      if (!videoClient || !authUser || !callId) return;
 
       try {
-        console.log("Initializing Stream video client...");
-
-        const user = {
-          id: authUser._id,
-          name: authUser.fullName,
-          image: authUser.profilePic,
-        };
-
-        const videoClient = new StreamVideoClient({
-          apiKey: STREAM_API_KEY,
-          user,
-          token: tokenData.token,
-        });
-
         const callInstance = videoClient.call("default", callId);
-
         await callInstance.join({ create: true });
 
-        console.log("Joined call successfully");
+        if (isAudioOnly) {
+          try { await callInstance.camera.disable(); } catch { /* ignore */ }
+        }
 
-        setClient(videoClient);
         setCall(callInstance);
       } catch (error) {
         console.error("Error joining call:", error);
@@ -65,17 +47,18 @@ const CallPage = () => {
     };
 
     initCall();
-  }, [tokenData, authUser, callId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videoClient, authUser, callId]);
 
-  if (isLoading || isConnecting) return <PageLoader />;
+  if (isLoading || isConnecting || !videoClient) return <PageLoader />;
 
   return (
     <div className="h-screen flex flex-col items-center justify-center">
       <div className="relative">
-        {client && call ? (
-          <StreamVideo client={client}>
+        {videoClient && call ? (
+          <StreamVideo client={videoClient}>
             <StreamCall call={call}>
-              <CallContent />
+              <CallContent isAudioOnly={isAudioOnly} />
             </StreamCall>
           </StreamVideo>
         ) : (
@@ -88,17 +71,22 @@ const CallPage = () => {
   );
 };
 
-const CallContent = () => {
+const CallContent = ({ isAudioOnly }) => {
   const { useCallCallingState } = useCallStateHooks();
   const callingState = useCallCallingState();
-
   const navigate = useNavigate();
 
   if (callingState === CallingState.LEFT) return navigate("/");
 
   return (
     <StreamTheme>
-      <SpeakerLayout />
+      {isAudioOnly ? (
+        <div className="flex flex-col items-center justify-center p-8">
+          <p className="text-lg font-semibold mb-4">Voice Call in Progress</p>
+        </div>
+      ) : (
+        <SpeakerLayout />
+      )}
       <CallControls />
     </StreamTheme>
   );
