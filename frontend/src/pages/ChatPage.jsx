@@ -69,16 +69,6 @@ const ChatPage = () => {
     };
   }, [tokenData, authUser, targetUserId]);
 
-  const handleVideoCall = () => {
-    if (channel) {
-      const callUrl = `${window.location.origin}/call/${channel.id}`;
-      channel.sendMessage({
-        text: `I've started a video call. Join me here: ${callUrl}`,
-      });
-      toast.success("Video call link sent successfully!");
-    }
-  };
-
   if (loading || !chatClient || !channel) return <ChatLoader />;
 
   return (
@@ -104,7 +94,7 @@ const ChatPage = () => {
               position: "relative",
             }}
           >
-            <CallButton handleVideoCall={handleVideoCall} />
+            <CallButton targetUserId={targetUserId} />
             <Window>
               <ChannelHeader />
               <MessageList />

@@ -391,6 +391,3 @@ export const NotificationProvider = ({ children }) => {
   );
 };
 
-// ─── Incoming Call Modal (rendered inside provider) ──────────────────────────
-
-import IncomingCallModal from "../components/IncomingCallModal";
