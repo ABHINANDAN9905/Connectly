@@ -9,8 +9,8 @@ const IncomingCallModal = () => {
 
   if (!incomingCall) return null;
 
-  const callerName = incomingCall.state.createdBy?.name || "Unknown";
-  const callerImage = incomingCall.state.createdBy?.image || "/favicon.ico";
+  const callerName = incomingCall.state?.createdBy?.name || "Unknown";
+  const callerImage = incomingCall.state?.createdBy?.image || "/favicon.ico";
   const isAudioOnly = incomingCall.id?.includes("audio");
 
   const handleAccept = () => {
@@ -27,7 +27,7 @@ const IncomingCallModal = () => {
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60">
-      <div className="bg-base-100 rounded-2xl shadow-2xl p-6 w-80 flex flex-col items-center gap-4 animate-pulse">
+      <div className="bg-base-100 rounded-2xl shadow-2xl p-6 w-80 flex flex-col items-center gap-4">
         <div className="w-24 h-24 rounded-full overflow-hidden ring-4 ring-primary/40">
           <img src={callerImage} alt={callerName} className="w-full h-full object-cover" />
         </div>

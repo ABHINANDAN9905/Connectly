@@ -308,19 +308,24 @@ export const NotificationProvider = ({ children }) => {
           vClient.on("all", (e) => console.log("VIDEO EVENT:", e.type, e));
 
           const onCallRinging = (call) => {
-            // Don't show popup for calls created by self
-            if (call.state.createdBy?.id === authUser._id) return;
-            setIncomingCall(call);
-            startRingtone();
+            try {
+              const createdBy = call?.state?.createdBy;
 
-            if (document.visibilityState !== "visible") {
-              showBrowserNotification(
-                call.state.createdBy?.name || "Incoming call",
-                call.type === "audio_room" || call.id?.includes("audio")
-                  ? "Voice call"
-                  : "Video call",
-                call.state.createdBy?.image || "/favicon.ico"
-              );
+              // Don't show popup for calls created by self
+              if (createdBy?.id === authUser._id) return;
+
+              setIncomingCall(call);
+              startRingtone();
+
+              if (document.visibilityState !== "visible") {
+                showBrowserNotification(
+                  createdBy?.name || "Incoming call",
+                  call?.id?.includes("audio") ? "Voice call" : "Video call",
+                  createdBy?.image || "/favicon.ico"
+                );
+              }
+            } catch (err) {
+              console.error("onCallRinging error:", err);
             }
           };
 
