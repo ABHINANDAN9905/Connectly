@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import { getStreamToken } from "../lib/api";
 import useAuthUser from "../hooks/useAuthUser";
 import { NotificationContext } from "./notificationContext";
+import IncomingCallModal from "../components/IncomingCallModal";
 
 const STREAM_API_KEY = import.meta.env.VITE_STREAM_API_KEY;
 
