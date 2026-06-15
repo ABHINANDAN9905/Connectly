@@ -237,45 +237,6 @@ export const NotificationProvider = ({ children }) => {
           [{ last_message_at: -1 }],
           { watch: true, state: true, presence: true, limit: 30 }
         );
-        if (!videoListenersAttached.current) {
-          videoListenersAttached.current = true;
-
-          // TEMP DEBUG — remove after testing
-          vClient.on("all", (e) => console.log("VIDEO EVENT:", e.type, e));
-
-          const onCallRinging = (call) => {
-            // Don't show popup for calls created by self
-            if (call.state.createdBy?.id === authUser._id) return;
-            setIncomingCall(call);
-            startRingtone();
-
-            if (document.visibilityState !== "visible") {
-              showBrowserNotification(
-                call.state.createdBy?.name || "Incoming call",
-                call.type === "audio_room" || call.id?.includes("audio")
-                  ? "Voice call"
-                  : "Video call",
-                call.state.createdBy?.image || "/favicon.ico"
-              );
-            }
-          };
-
-          const onCallEnded = () => {
-            stopRingtone();
-            setIncomingCall(null);
-          };
-
-          vClient.on("call.ring", onCallRinging);
-          vClient.on("call.rejected", onCallEnded);
-          vClient.on("call.ended", onCallEnded);
-
-          detachVideoListeners = () => {
-            vClient.off("call.ring", onCallRinging);
-            vClient.off("call.rejected", onCallEnded);
-            vClient.off("call.ended", onCallEnded);
-            videoListenersAttached.current = false;
-          };
-        }
 
         // ── Chat event listeners exactly once ────────────────────────────
         if (!listenersAttached.current) {
@@ -342,6 +303,9 @@ export const NotificationProvider = ({ children }) => {
 
         if (!videoListenersAttached.current) {
           videoListenersAttached.current = true;
+
+          // TEMP DEBUG — remove after confirming everything works
+          vClient.on("all", (e) => console.log("VIDEO EVENT:", e.type, e));
 
           const onCallRinging = (call) => {
             // Don't show popup for calls created by self
@@ -430,4 +394,3 @@ export const NotificationProvider = ({ children }) => {
     </NotificationContext.Provider>
   );
 };
-
