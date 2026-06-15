@@ -154,3 +154,22 @@
     max-width: 82vw !important;
   }
 }
+
+/* ─── Audio Recorder & Voice Message ─── */
+.str-chat__message-input .str-chat__audio-recorder,
+.str-chat__message-input .str-chat__audio-recorder-container {
+  width: 100% !important;
+  background: #f0f2f5 !important;
+  border-radius: 24px !important;
+}
+
+.str-chat__attachment-list .str-chat__message-attachment--voiceRecording,
+.str-chat__voice-recording-widget {
+  max-width: 240px !important;
+  width: 100% !important;
+}
+
+.str-chat__message-input-inner .str-chat__file-input-container,
+.str-chat__message-input-inner button {
+  flex-shrink: 0 !important;
+}

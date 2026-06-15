@@ -108,7 +108,7 @@ const ChatPage = () => {
             <Window>
               <ChannelHeader />
               <MessageList />
-              <MessageInput focus />
+              <MessageInput focus audioRecordingEnabled />
             </Window>
           </div>
           <Thread />
