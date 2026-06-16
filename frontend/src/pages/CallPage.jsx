@@ -8,7 +8,7 @@ import {
   StreamTheme,
   CallingState,
   useCallStateHooks,
-  ParticipantView,
+  SpeakerLayout,
 } from "@stream-io/video-react-sdk";
 import "@stream-io/video-react-sdk/dist/css/styles.css";
 import toast from "react-hot-toast";
@@ -57,7 +57,7 @@ const CallPage = () => {
   if (isLoading || isConnecting || !videoClient) return <PageLoader />;
 
   return (
-    <div className="h-screen bg-gray-900">
+    <div style={{ height: "100vh", width: "100vw", background: "#1a1a2e" }}>
       {videoClient && call ? (
         <StreamVideo client={videoClient}>
           <StreamCall call={call}>
@@ -84,26 +84,48 @@ const CallContent = ({ isAudioOnly }) => {
   if (isAudioOnly) {
     return (
       <StreamTheme>
-        <div className="h-screen w-screen flex flex-col items-center justify-center bg-gray-900">
-          <div className="flex gap-6 mb-8">
+        <div
+          style={{
+            height: "100vh",
+            width: "100vw",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "#1a1a2e",
+            gap: "24px",
+          }}
+        >
+          <div style={{ display: "flex", gap: "32px" }}>
             {participants.map((p) => (
-              <div key={p.sessionId} className="flex flex-col items-center gap-2">
-                <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-700">
+              <div
+                key={p.sessionId}
+                style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}
+              >
+                <div
+                  style={{
+                    width: "96px",
+                    height: "96px",
+                    borderRadius: "50%",
+                    overflow: "hidden",
+                    border: "3px solid #6366f1",
+                  }}
+                >
                   <img
                     src={p.image || "/favicon.ico"}
                     alt={p.name || "User"}
-                    className="w-full h-full object-cover"
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
                     onError={(e) => { e.target.src = "/favicon.ico"; }}
                   />
                 </div>
-                <p className="text-white text-sm">{p.name || "User"}</p>
-                <span className="text-xs text-gray-400">
-                  {p.isSpeaking ? "🎙️ Speaking" : "🔇 Silent"}
-                </span>
+                <p style={{ color: "white", fontWeight: 600 }}>{p.name || "User"}</p>
+                <p style={{ color: "#9ca3af", fontSize: "12px" }}>
+                  {p.isSpeaking ? "🎙️ Speaking..." : "🔇"}
+                </p>
               </div>
             ))}
           </div>
-          <p className="text-white text-xl font-semibold mb-8">Voice Call in Progress</p>
+          <p style={{ color: "#d1d5db", fontSize: "18px" }}>Voice Call in Progress</p>
           <CallControls />
         </div>
       </StreamTheme>
@@ -112,25 +134,26 @@ const CallContent = ({ isAudioOnly }) => {
 
   return (
     <StreamTheme>
-      <div className="h-screen w-screen flex flex-col bg-gray-900">
-        <div className="flex-1 grid gap-2 p-2"
+      <div
+        style={{
+          height: "100vh",
+          width: "100vw",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        <div style={{ flex: 1, minHeight: 0 }}>
+          <SpeakerLayout />
+        </div>
+        <div
           style={{
-            gridTemplateColumns: participants.length === 1 ? "1fr" : "1fr 1fr",
+            flexShrink: 0,
+            display: "flex",
+            justifyContent: "center",
+            padding: "16px",
+            background: "#1a1a2e",
           }}
         >
-          {participants.map((p) => (
-            <div key={p.sessionId} className="relative rounded-lg overflow-hidden bg-gray-800">
-              <ParticipantView
-                participant={p}
-                className="w-full h-full"
-              />
-              <div className="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
-                {p.name || "User"} {p.isSpeaking ? "🎙️" : ""}
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="flex-shrink-0 flex justify-center py-4 bg-gray-900">
           <CallControls />
         </div>
       </div>
