@@ -1,5 +1,5 @@
 import { useContext } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { VideoIcon, PhoneIcon } from "lucide-react";
 import { NotificationContext } from "../contexts/notificationContext";
 import useAuthUser from "../hooks/useAuthUser";
@@ -9,7 +9,6 @@ function CallButton({ targetUserId }) {
   const { videoClient } = useContext(NotificationContext);
   const { authUser } = useAuthUser();
   const navigate = useNavigate();
-  const { id: channelId } = useParams();
 
   const startCall = async (audioOnly) => {
     if (!videoClient) {
@@ -17,7 +16,10 @@ function CallButton({ targetUserId }) {
       return;
     }
     try {
-      const callId = audioOnly ? `audio-${channelId}` : `video-${channelId}`;
+      const callId = audioOnly
+        ? `audio-${targetUserId}`
+        : `video-${targetUserId}`;
+
       const call = videoClient.call("default", callId);
 
       await call.getOrCreate({

@@ -10,8 +10,6 @@ import IncomingCallModal from "../components/IncomingCallModal";
 
 const STREAM_API_KEY = import.meta.env.VITE_STREAM_API_KEY;
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
 const formatChannelPreview = (channel, currentUserId) => {
   const members = Object.values(channel.state?.members || {});
   const otherMember = members.find((m) => m.user?.id !== currentUserId);
@@ -26,9 +24,7 @@ const formatChannelPreview = (channel, currentUserId) => {
       ? `From ${otherMember.user.name || otherMember.user.fullName}`
       : "New message",
     avatar: otherMember?.user?.image || otherMember?.user?.profilePic || "/favicon.ico",
-    preview:
-      (lastMessage?.text && String(lastMessage.text)) ||
-      "Sent a new message",
+    preview: (lastMessage?.text && String(lastMessage.text)) || "Sent a new message",
     time: new Date(channel.state?.last_message_at || lastMessage?.created_at || Date.now()),
     unreadCount: channel.countUnread(),
   };
@@ -49,7 +45,6 @@ const playFallbackTone = () => {
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     const ctx = new AudioCtx();
     const now = ctx.currentTime;
-
     [[800, now, 0.15], [1200, now + 0.05, 0.1]].forEach(([freq, start, dur]) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -62,9 +57,7 @@ const playFallbackTone = () => {
       osc.start(start);
       osc.stop(start + dur);
     });
-  } catch {
-    // silent fail
-  }
+  } catch { /* silent fail */ }
 };
 
 const showBrowserNotification = (title, body, icon) => {
@@ -72,8 +65,6 @@ const showBrowserNotification = (title, body, icon) => {
   const n = new Notification(title, { body, icon });
   n.onclick = () => { window.focus(); n.close(); };
 };
-
-// ─── Provider ────────────────────────────────────────────────────────────────
 
 export const NotificationProvider = ({ children }) => {
   const { authUser, isLoading: authLoading } = useAuthUser();
@@ -84,11 +75,8 @@ export const NotificationProvider = ({ children }) => {
     retry: false,
   });
 
-  // Shared Stream chat client — single instance across the whole app
   const clientRef = useRef(null);
   const listenersAttached = useRef(false);
-
-  // Shared Stream video client — for ringing calls
   const videoClientRef = useRef(null);
   const videoListenersAttached = useRef(false);
   const ringtoneRef = useRef(null);
@@ -98,11 +86,8 @@ export const NotificationProvider = ({ children }) => {
   const [isReady, setIsReady] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [totalUnread, setTotalUnread] = useState(0);
-
-  // Incoming call state
   const [incomingCall, setIncomingCall] = useState(null);
 
-  // activeChannelId lives in a ref so event handlers never go stale
   const activeChannelIdRef = useRef(null);
   const [activeChannelId, setActiveChannelIdState] = useState(null);
 
@@ -111,11 +96,9 @@ export const NotificationProvider = ({ children }) => {
     setActiveChannelIdState(id);
   }, []);
 
-  // ── Recompute unread state from the client's channel cache ──────────────
   const syncNotifications = useCallback(() => {
     const client = clientRef.current;
     if (!client) return;
-
     const channels = Object.values(client.activeChannels || {});
     const unread = channels
       .filter((ch) => ch.countUnread() > 0)
@@ -125,37 +108,26 @@ export const NotificationProvider = ({ children }) => {
         return bT - aT;
       })
       .map((ch) => formatChannelPreview(ch, client.userID));
-
     setNotifications(unread);
     setTotalUnread(unread.reduce((s, n) => s + n.unreadCount, 0));
   }, []);
 
-  // ── Mark a channel as read and immediately sync UI ───────────────────────
-  const markChannelRead = useCallback(
-    async (channelId) => {
-      const client = clientRef.current;
-      if (!client || !channelId) return;
+  const markChannelRead = useCallback(async (channelId) => {
+    const client = clientRef.current;
+    if (!client || !channelId) return;
+    try {
+      const channel =
+        client.activeChannels[`messaging:${channelId}`] ||
+        client.channel("messaging", channelId);
+      await channel.markRead();
+      setNotifications((prev) => prev.filter((n) => n.channelId !== channelId));
+      setTotalUnread((prev) => Math.max(0, prev));
+      syncNotifications();
+    } catch (err) {
+      console.warn("markChannelRead failed:", err);
+    }
+  }, [syncNotifications]);
 
-      try {
-        const channel =
-          client.activeChannels[`messaging:${channelId}`] ||
-          client.channel("messaging", channelId);
-
-        await channel.markRead();
-        setNotifications((prev) => prev.filter((n) => n.channelId !== channelId));
-        setTotalUnread((prev) => {
-          const removed = prev;
-          return Math.max(0, removed);
-        });
-        syncNotifications();
-      } catch (err) {
-        console.warn("markChannelRead failed:", err);
-      }
-    },
-    [syncNotifications]
-  );
-
-  // ── Ringtone controls ─────────────────────────────────────────────────────
   const startRingtone = useCallback(() => {
     try {
       if (!ringtoneRef.current) {
@@ -164,9 +136,7 @@ export const NotificationProvider = ({ children }) => {
       }
       ringtoneRef.current.currentTime = 0;
       ringtoneRef.current.play().catch(() => {});
-    } catch {
-      // ignore
-    }
+    } catch { /* ignore */ }
   }, []);
 
   const stopRingtone = useCallback(() => {
@@ -176,7 +146,6 @@ export const NotificationProvider = ({ children }) => {
     }
   }, []);
 
-  // ── Accept / decline incoming call ───────────────────────────────────────
   const acceptIncomingCall = useCallback(() => {
     stopRingtone();
     const call = incomingCall;
@@ -196,27 +165,21 @@ export const NotificationProvider = ({ children }) => {
     setIncomingCall(null);
   }, [incomingCall, stopRingtone]);
 
-  // ── Request browser notification permission once ──────────────────────────
   useEffect(() => {
     if ("Notification" in window && Notification.permission === "default") {
       Notification.requestPermission();
     }
   }, []);
 
-  // ── Main Stream initialisation (chat + video) ────────────────────────────
   useEffect(() => {
     if (!authUser || authLoading || tokenLoading || !tokenData?.token) return;
-    if (!STREAM_API_KEY) {
-      console.error("VITE_STREAM_API_KEY is missing.");
-      return;
-    }
+    if (!STREAM_API_KEY) return;
 
     let detachListeners = () => {};
     let detachVideoListeners = () => {};
 
     const init = async () => {
       try {
-        // Reuse singleton chat client
         const client = StreamChat.getInstance(STREAM_API_KEY);
         clientRef.current = client;
 
@@ -238,33 +201,25 @@ export const NotificationProvider = ({ children }) => {
           { watch: true, state: true, presence: true, limit: 30 }
         );
 
-        // ── Chat event listeners exactly once ────────────────────────────
         if (!listenersAttached.current) {
           listenersAttached.current = true;
 
           const onNewMessage = (event) => {
             if (event.user?.id === authUser._id) return;
-
             const incomingCid = event.channel_id || event.cid;
             const isOpen =
               incomingCid &&
               incomingCid === activeChannelIdRef.current &&
               document.visibilityState === "visible";
-
             syncNotifications();
-
             if (isOpen) return;
-
             const senderName = event.user?.name || "New message";
             const preview = event.message?.text || "You have a new message";
             const icon = event.user?.image || "/favicon.ico";
-
             playNotificationSound();
-
             if (document.visibilityState !== "visible") {
               showBrowserNotification(senderName, preview, icon);
             }
-
             toast(`${senderName}: ${preview}`, { icon: "💬", duration: 4000 });
           };
 
@@ -286,7 +241,7 @@ export const NotificationProvider = ({ children }) => {
           };
         }
 
-        // ── Global Video client for ringing calls ────────────────────────
+        // ── Global Video client ──────────────────────────────────────────
         let vClient = videoClientRef.current;
         if (!vClient || vClient.streamClient?.userID !== authUser._id) {
           if (vClient) {
@@ -304,19 +259,12 @@ export const NotificationProvider = ({ children }) => {
         if (!videoListenersAttached.current) {
           videoListenersAttached.current = true;
 
-          // TEMP DEBUG — remove after confirming everything works
-          vClient.on("all", (e) => console.log("VIDEO EVENT:", e.type, e));
-
           const onCallRinging = (call) => {
             try {
               const createdBy = call?.state?.createdBy;
-
-              // Don't show popup for calls created by self
               if (createdBy?.id === authUser._id) return;
-
               setIncomingCall(call);
               startRingtone();
-
               if (document.visibilityState !== "visible") {
                 showBrowserNotification(
                   createdBy?.name || "Incoming call",
@@ -337,11 +285,13 @@ export const NotificationProvider = ({ children }) => {
           vClient.on("call.ring", onCallRinging);
           vClient.on("call.rejected", onCallEnded);
           vClient.on("call.ended", onCallEnded);
+          vClient.on("call.missed", onCallEnded);
 
           detachVideoListeners = () => {
             vClient.off("call.ring", onCallRinging);
             vClient.off("call.rejected", onCallEnded);
             vClient.off("call.ended", onCallEnded);
+            vClient.off("call.missed", onCallEnded);
             videoListenersAttached.current = false;
           };
         }
@@ -377,18 +327,9 @@ export const NotificationProvider = ({ children }) => {
       declineIncomingCall,
     }),
     [
-      chatClient,
-      videoClient,
-      isReady,
-      notifications,
-      totalUnread,
-      activeChannelId,
-      setActiveChannelId,
-      markChannelRead,
-      syncNotifications,
-      incomingCall,
-      acceptIncomingCall,
-      declineIncomingCall,
+      chatClient, videoClient, isReady, notifications, totalUnread,
+      activeChannelId, setActiveChannelId, markChannelRead, syncNotifications,
+      incomingCall, acceptIncomingCall, declineIncomingCall,
     ]
   );
 

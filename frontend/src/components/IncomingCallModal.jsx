@@ -9,7 +9,6 @@ const IncomingCallModal = () => {
 
   if (!incomingCall) return null;
 
-  // Try createdBy first, fallback to custom data
   const createdBy = incomingCall.state?.createdBy;
   const custom = incomingCall.state?.custom || incomingCall.custom || {};
 
