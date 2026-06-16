@@ -8,6 +8,8 @@ const IncomingCallModal = () => {
   const navigate = useNavigate();
 
   if (!incomingCall) return null;
+  console.log("IncomingCall.state", incomingCall.state);
+  console.log("createdBy", incomingCall.state?.createdBy);
 
   const callerName = incomingCall.state?.createdBy?.name || "Unknown";
   const callerImage = incomingCall.state?.createdBy?.image || "/favicon.ico";
