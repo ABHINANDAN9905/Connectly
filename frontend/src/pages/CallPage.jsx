@@ -8,7 +8,8 @@ import {
   StreamTheme,
   CallingState,
   useCallStateHooks,
-  SpeakerLayout,
+  ParticipantView,
+  useStreamVideoClient,
 } from "@stream-io/video-react-sdk";
 import "@stream-io/video-react-sdk/dist/css/styles.css";
 import toast from "react-hot-toast";
@@ -35,10 +36,8 @@ const CallPage = () => {
         const callInstance = videoClient.call("default", callId);
 
         if (isIncoming) {
-          // Receiver — just join, don't create
           await callInstance.join();
         } else {
-          // Caller — create if not exists
           await callInstance.join({ create: true });
         }
 
@@ -83,9 +82,17 @@ const CallPage = () => {
 };
 
 const CallContent = ({ isAudioOnly }) => {
-  const { useCallCallingState, useParticipants } = useCallStateHooks();
+  const {
+    useCallCallingState,
+    useParticipants,
+    useLocalParticipant,
+    useRemoteParticipants,
+  } = useCallStateHooks();
+
   const callingState = useCallCallingState();
   const participants = useParticipants();
+  const localParticipant = useLocalParticipant();
+  const remoteParticipants = useRemoteParticipants();
   const navigate = useNavigate();
 
   if (callingState === CallingState.LEFT) return navigate("/");
@@ -109,7 +116,12 @@ const CallContent = ({ isAudioOnly }) => {
             {participants.map((p) => (
               <div
                 key={p.sessionId}
-                style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: "8px",
+                }}
               >
                 <div
                   style={{
@@ -117,7 +129,7 @@ const CallContent = ({ isAudioOnly }) => {
                     height: "96px",
                     borderRadius: "50%",
                     overflow: "hidden",
-                    border: "3px solid #6366f1",
+                    border: p.isSpeaking ? "3px solid #22c55e" : "3px solid #6366f1",
                   }}
                 >
                   <img
@@ -141,6 +153,7 @@ const CallContent = ({ isAudioOnly }) => {
     );
   }
 
+  // Video call layout
   return (
     <StreamTheme>
       <div
@@ -149,18 +162,81 @@ const CallContent = ({ isAudioOnly }) => {
           width: "100vw",
           display: "flex",
           flexDirection: "column",
+          background: "#1a1a2e",
+          position: "relative",
         }}
       >
-        <div style={{ flex: 1, minHeight: 0 }}>
-          <SpeakerLayout />
+        {/* Remote participant — full screen */}
+        <div style={{ flex: 1, position: "relative", minHeight: 0 }}>
+          {remoteParticipants.length > 0 ? (
+            <ParticipantView
+              participant={remoteParticipants[0]}
+              style={{ width: "100%", height: "100%" }}
+            />
+          ) : (
+            <div
+              style={{
+                width: "100%",
+                height: "100%",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "16px",
+              }}
+            >
+              <div
+                style={{
+                  width: "96px",
+                  height: "96px",
+                  borderRadius: "50%",
+                  background: "#374151",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "40px",
+                }}
+              >
+                👤
+              </div>
+              <p style={{ color: "white", fontSize: "18px" }}>
+                Waiting for others to join...
+              </p>
+            </div>
+          )}
+
+          {/* Local participant — small pip bottom right */}
+          {localParticipant && (
+            <div
+              style={{
+                position: "absolute",
+                bottom: "16px",
+                right: "16px",
+                width: "120px",
+                height: "160px",
+                borderRadius: "12px",
+                overflow: "hidden",
+                border: "2px solid white",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
+                background: "#374151",
+              }}
+            >
+              <ParticipantView
+                participant={localParticipant}
+                style={{ width: "100%", height: "100%" }}
+              />
+            </div>
+          )}
         </div>
+
+        {/* Controls */}
         <div
           style={{
             flexShrink: 0,
             display: "flex",
             justifyContent: "center",
             padding: "16px",
-            background: "#1a1a2e",
+            background: "rgba(0,0,0,0.5)",
           }}
         >
           <CallControls />
