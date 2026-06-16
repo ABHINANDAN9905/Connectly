@@ -2,10 +2,12 @@ import { useContext } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { VideoIcon, PhoneIcon } from "lucide-react";
 import { NotificationContext } from "../contexts/notificationContext";
+import useAuthUser from "../hooks/useAuthUser";
 import toast from "react-hot-toast";
 
 function CallButton({ targetUserId }) {
   const { videoClient } = useContext(NotificationContext);
+  const { authUser } = useAuthUser();
   const navigate = useNavigate();
   const { id: channelId } = useParams();
 
@@ -22,6 +24,11 @@ function CallButton({ targetUserId }) {
         ring: true,
         data: {
           members: targetUserId ? [{ user_id: targetUserId }] : undefined,
+          custom: {
+            callerName: authUser?.fullName || "Unknown",
+            callerImage: authUser?.profilePic || "/favicon.ico",
+            callerUserId: authUser?._id,
+          },
         },
       });
 
