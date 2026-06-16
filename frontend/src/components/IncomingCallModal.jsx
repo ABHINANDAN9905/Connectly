@@ -21,7 +21,7 @@ const IncomingCallModal = () => {
     const call = acceptIncomingCall();
     if (call) {
       const url = isAudioOnly ? `/call/${call.id}?audio=true` : `/call/${call.id}`;
-      navigate(url);
+      navigate(url, { state: { incomingCall: true } });
     }
   };
 

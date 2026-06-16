@@ -1,5 +1,5 @@
 import { useContext, useEffect, useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import useAuthUser from "../hooks/useAuthUser";
 import {
   StreamVideo,
@@ -18,7 +18,9 @@ import { NotificationContext } from "../contexts/notificationContext";
 const CallPage = () => {
   const { id: callId } = useParams();
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const isAudioOnly = searchParams.get("audio") === "true";
+  const isIncoming = location.state?.incomingCall === true;
 
   const [call, setCall] = useState(null);
   const [isConnecting, setIsConnecting] = useState(true);
@@ -31,7 +33,14 @@ const CallPage = () => {
 
       try {
         const callInstance = videoClient.call("default", callId);
-        await callInstance.join({ create: true });
+
+        if (isIncoming) {
+          // Receiver — just join, don't create
+          await callInstance.join();
+        } else {
+          // Caller — create if not exists
+          await callInstance.join({ create: true });
+        }
 
         try { await callInstance.microphone.enable(); } catch { /* ignore */ }
 
