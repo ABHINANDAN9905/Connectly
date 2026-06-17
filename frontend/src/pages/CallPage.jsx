@@ -7,12 +7,12 @@ import {
   StreamTheme,
   CallingState,
   useCallStateHooks,
-  useCall,              // ← top-level export, NOT from useCallStateHooks()
+  useCall,
   ParticipantView,
+  CallControls,         // ← restored
 } from "@stream-io/video-react-sdk";
 import "@stream-io/video-react-sdk/dist/css/styles.css";
 import toast from "react-hot-toast";
-import { PhoneOffIcon } from "lucide-react";
 import PageLoader from "../components/PageLoader";
 import { NotificationContext } from "../contexts/notificationContext";
 
@@ -88,29 +88,6 @@ const CallPage = () => {
   );
 };
 
-// ─── Custom end-call button ────────────────────────────────────────────────
-const EndCallButton = ({ onEnd }) => (
-  <button
-    onClick={onEnd}
-    style={{
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      width: "56px",
-      height: "56px",
-      borderRadius: "50%",
-      background: "#ef4444",
-      border: "none",
-      cursor: "pointer",
-      boxShadow: "0 4px 12px rgba(239,68,68,0.5)",
-    }}
-    title="End call for everyone"
-  >
-    <PhoneOffIcon color="white" size={22} />
-  </button>
-);
-
-// ─── Call content (lives inside StreamCall context) ────────────────────────
 const CallContent = ({ isAudioOnly }) => {
   const {
     useCallCallingState,
@@ -119,16 +96,13 @@ const CallContent = ({ isAudioOnly }) => {
     useRemoteParticipants,
   } = useCallStateHooks();
 
-  const callingState      = useCallCallingState();
-  const participants      = useParticipants();
-  const localParticipant  = useLocalParticipant();
+  const callingState       = useCallCallingState();
+  const participants       = useParticipants();
+  const localParticipant   = useLocalParticipant();
   const remoteParticipants = useRemoteParticipants();
-  const navigate          = useNavigate();
-
-  // useCall() is a standalone hook — reads the call from StreamCall context
-  const call = useCall();
-
-  const leavingRef = useRef(false);
+  const navigate           = useNavigate();
+  const call               = useCall();
+  const leavingRef         = useRef(false);
 
   const leaveAndGoHome = useCallback(async (reason = "unknown") => {
     if (leavingRef.current) return;
@@ -138,19 +112,7 @@ const CallContent = ({ isAudioOnly }) => {
     navigate("/");
   }, [call, navigate]);
 
-  const handleEndCall = async () => {
-    if (leavingRef.current) return;
-    leavingRef.current = true;
-    try {
-      console.log("[CallContent] endCall() →", call?.id);
-      await call?.endCall();
-    } catch (err) {
-      console.error("endCall failed:", err);
-    }
-    navigate("/");
-  };
-
-  // Listen for remote termination (receiver auto-exits)
+  // Remote termination — fires on the OTHER participant's screen
   useEffect(() => {
     if (!call) return;
 
@@ -169,7 +131,7 @@ const CallContent = ({ isAudioOnly }) => {
     };
   }, [call, leaveAndGoHome]);
 
-  // Handle SDK-driven state transitions (network drop, etc.)
+  // SDK-driven state transitions (network drop, leave via CallControls, etc.)
   useEffect(() => {
     if (callingState === CallingState.LEFT) {
       leaveAndGoHome("CallingState.LEFT");
@@ -221,7 +183,8 @@ const CallContent = ({ isAudioOnly }) => {
             ))}
           </div>
           <p style={{ color: "#d1d5db", fontSize: "18px" }}>Voice Call in Progress</p>
-          <EndCallButton onEnd={handleEndCall} />
+          {/* All built-in Stream controls: mic, camera, reactions, screen share, leave */}
+          <CallControls />
         </div>
       </StreamTheme>
     );
@@ -298,6 +261,7 @@ const CallContent = ({ isAudioOnly }) => {
           )}
         </div>
 
+        {/* All built-in Stream controls: mic, camera, reactions, screen share, leave */}
         <div
           style={{
             flexShrink: 0,
@@ -307,7 +271,7 @@ const CallContent = ({ isAudioOnly }) => {
             background: "rgba(0,0,0,0.5)",
           }}
         >
-          <EndCallButton onEnd={handleEndCall} />
+          <CallControls />
         </div>
       </div>
     </StreamTheme>
