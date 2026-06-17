@@ -10,12 +10,18 @@ import IncomingCallModal from "../components/IncomingCallModal";
 
 const STREAM_API_KEY = import.meta.env.VITE_STREAM_API_KEY;
 
+// ─── Module-level singletons ────────────────────────────────────────────────
+// Kept outside React so they survive StrictMode double-mount and are never
+// re-created across re-renders. React state holds references for consumers.
+let chatSingleton = null;
+let videoSingleton = null;
+// ────────────────────────────────────────────────────────────────────────────
+
 const formatChannelPreview = (channel, currentUserId) => {
   const members = Object.values(channel.state?.members || {});
   const otherMember = members.find((m) => m.user?.id !== currentUserId);
   const messages = channel.state?.messages || [];
   const lastMessage = messages[messages.length - 1];
-
   return {
     channelId: channel.id,
     targetUserId: otherMember?.user?.id,
@@ -75,29 +81,33 @@ export const NotificationProvider = ({ children }) => {
     retry: false,
   });
 
-  const clientRef = useRef(null);
-  const listenersAttached = useRef(false);
-  const videoClientRef = useRef(null);
-  const videoListenersAttached = useRef(false);
-  const ringtoneRef = useRef(null);
+  // ── Refs ──────────────────────────────────────────────────────────────────
+  const initializingRef   = useRef(false); // true while init() is in-flight
+  const initializedForRef = useRef(null);  // userId that was successfully inited
+  const chatListenersRef  = useRef(false);
+  const videoListenersRef = useRef(false);
+  const ringtoneRef       = useRef(null);
+  const detachChatRef     = useRef(() => {});
+  const detachVideoRef    = useRef(() => {});
 
-  const [chatClient, setChatClient] = useState(null);
+  // ── State (consumed by context) ───────────────────────────────────────────
+  const [chatClient,  setChatClient]  = useState(null);
   const [videoClient, setVideoClient] = useState(null);
-  const [isReady, setIsReady] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-  const [totalUnread, setTotalUnread] = useState(0);
-  const [incomingCall, setIncomingCall] = useState(null);
+  const [isReady,     setIsReady]     = useState(false);
+  const [notifications,  setNotifications]  = useState([]);
+  const [totalUnread,    setTotalUnread]     = useState(0);
+  const [incomingCall,   setIncomingCall]    = useState(null);
 
   const activeChannelIdRef = useRef(null);
   const [activeChannelId, setActiveChannelIdState] = useState(null);
-
   const setActiveChannelId = useCallback((id) => {
     activeChannelIdRef.current = id;
     setActiveChannelIdState(id);
   }, []);
 
+  // ── Helpers ───────────────────────────────────────────────────────────────
   const syncNotifications = useCallback(() => {
-    const client = clientRef.current;
+    const client = chatSingleton;
     if (!client) return;
     const channels = Object.values(client.activeChannels || {});
     const unread = channels
@@ -113,7 +123,7 @@ export const NotificationProvider = ({ children }) => {
   }, []);
 
   const markChannelRead = useCallback(async (channelId) => {
-    const client = clientRef.current;
+    const client = chatSingleton;
     if (!client || !channelId) return;
     try {
       const channel =
@@ -156,53 +166,61 @@ export const NotificationProvider = ({ children }) => {
   const declineIncomingCall = useCallback(async () => {
     stopRingtone();
     if (incomingCall) {
-      try {
-        await incomingCall.leave({ reject: true });
-      } catch (err) {
-        console.warn("Failed to reject call:", err);
-      }
+      try { await incomingCall.leave({ reject: true }); }
+      catch (err) { console.warn("Failed to reject call:", err); }
     }
     setIncomingCall(null);
   }, [incomingCall, stopRingtone]);
 
+  // ── Browser notification permission ───────────────────────────────────────
   useEffect(() => {
     if ("Notification" in window && Notification.permission === "default") {
       Notification.requestPermission();
     }
   }, []);
 
+  // ── Main init — runs once per unique (userId + token) pair ────────────────
   useEffect(() => {
     if (!authUser || authLoading || tokenLoading || !tokenData?.token) return;
     if (!STREAM_API_KEY) return;
 
-    let detachListeners = () => {};
-    let detachVideoListeners = () => {};
+    // Already initialized for this user — skip entirely.
+    if (initializedForRef.current === authUser._id) return;
+
+    // Another async init is already in-flight — skip to avoid double connectUser.
+    if (initializingRef.current) return;
+
+    initializingRef.current = true;
 
     const init = async () => {
       try {
-        const client = StreamChat.getInstance(STREAM_API_KEY);
-        clientRef.current = client;
+        // ── Chat client (singleton) ──────────────────────────────────────
+        // StreamChat.getInstance() always returns the same instance for a key.
+        // We call connectUser only when the instance has no connected user yet.
+        const chat = StreamChat.getInstance(STREAM_API_KEY);
+        chatSingleton = chat;
 
-        if (client.userID !== authUser._id) {
-          if (client.userID) {
-            try { await client.disconnectUser(); } catch { /* ignore */ }
-          }
-          await client.connectUser(
+        if (!chat.userID) {
+          console.log("[Stream] connectUser →", authUser._id);
+          await chat.connectUser(
             { id: authUser._id, name: authUser.fullName, image: authUser.profilePic },
             tokenData.token
           );
+        } else {
+          console.log("[Stream] chat already connected as", chat.userID);
         }
 
-        setChatClient(client);
+        setChatClient(chat);
 
-        await client.queryChannels(
+        await chat.queryChannels(
           { type: "messaging", members: { $in: [authUser._id] } },
           [{ last_message_at: -1 }],
           { watch: true, state: true, presence: true, limit: 30 }
         );
 
-        if (!listenersAttached.current) {
-          listenersAttached.current = true;
+        // ── Chat event listeners (attach once) ───────────────────────────
+        if (!chatListenersRef.current) {
+          chatListenersRef.current = true;
 
           const onNewMessage = (event) => {
             if (event.user?.id === authUser._id) return;
@@ -225,39 +243,40 @@ export const NotificationProvider = ({ children }) => {
 
           const onReadChange = () => syncNotifications();
 
-          client.on("message.new", onNewMessage);
-          client.on("notification.message_new", onReadChange);
-          client.on("notification.mark_read", onReadChange);
-          client.on("notification.mark_unread", onReadChange);
-          client.on("channel.updated", onReadChange);
+          chat.on("message.new",              onNewMessage);
+          chat.on("notification.message_new", onReadChange);
+          chat.on("notification.mark_read",   onReadChange);
+          chat.on("notification.mark_unread", onReadChange);
+          chat.on("channel.updated",          onReadChange);
 
-          detachListeners = () => {
-            client.off("message.new", onNewMessage);
-            client.off("notification.message_new", onReadChange);
-            client.off("notification.mark_read", onReadChange);
-            client.off("notification.mark_unread", onReadChange);
-            client.off("channel.updated", onReadChange);
-            listenersAttached.current = false;
+          detachChatRef.current = () => {
+            chat.off("message.new",              onNewMessage);
+            chat.off("notification.message_new", onReadChange);
+            chat.off("notification.mark_read",   onReadChange);
+            chat.off("notification.mark_unread", onReadChange);
+            chat.off("channel.updated",          onReadChange);
+            chatListenersRef.current = false;
           };
         }
 
-        // ── Global Video client ──────────────────────────────────────────
-        let vClient = videoClientRef.current;
-        if (!vClient || vClient.streamClient?.userID !== authUser._id) {
-          if (vClient) {
-            try { await vClient.disconnectUser(); } catch { /* ignore */ }
-          }
-          vClient = new StreamVideoClient({
+        // ── Video client (singleton) ─────────────────────────────────────
+        // Create once; reuse the module-level singleton on subsequent renders.
+        if (!videoSingleton) {
+          console.log("[Stream] creating StreamVideoClient for", authUser._id);
+          videoSingleton = new StreamVideoClient({
             apiKey: STREAM_API_KEY,
             user: { id: authUser._id, name: authUser.fullName, image: authUser.profilePic },
             token: tokenData.token,
           });
-          videoClientRef.current = vClient;
+        } else {
+          console.log("[Stream] reusing existing StreamVideoClient");
         }
-        setVideoClient(vClient);
 
-        if (!videoListenersAttached.current) {
-          videoListenersAttached.current = true;
+        setVideoClient(videoSingleton);
+
+        // ── Video event listeners (attach once) ──────────────────────────
+        if (!videoListenersRef.current) {
+          videoListenersRef.current = true;
 
           const onCallRinging = (event) => {
             try {
@@ -265,10 +284,7 @@ export const NotificationProvider = ({ children }) => {
               console.log("EVENT ID", event?.id);
               console.log("EVENT CALL ID", event?.call?.id);
 
-              // Stream Video SDK wraps the Call instance inside event.call;
-              // fall back to the event itself for older SDK shapes.
               const call = event?.call ?? event;
-
               const createdBy = call?.state?.createdBy;
               if (createdBy?.id === authUser._id) return;
 
@@ -297,35 +313,72 @@ export const NotificationProvider = ({ children }) => {
             setIncomingCall(null);
           };
 
-          vClient.on("call.ring", onCallRinging);
-          vClient.on("call.rejected", onCallEnded);
-          vClient.on("call.ended", onCallEnded);
-          vClient.on("call.missed", onCallEnded);
+          videoSingleton.on("call.ring",     onCallRinging);
+          videoSingleton.on("call.rejected", onCallEnded);
+          videoSingleton.on("call.ended",    onCallEnded);
+          videoSingleton.on("call.missed",   onCallEnded);
 
-          detachVideoListeners = () => {
-            vClient.off("call.ring", onCallRinging);
-            vClient.off("call.rejected", onCallEnded);
-            vClient.off("call.ended", onCallEnded);
-            vClient.off("call.missed", onCallEnded);
-            videoListenersAttached.current = false;
+          detachVideoRef.current = () => {
+            videoSingleton.off("call.ring",     onCallRinging);
+            videoSingleton.off("call.rejected", onCallEnded);
+            videoSingleton.off("call.ended",    onCallEnded);
+            videoSingleton.off("call.missed",   onCallEnded);
+            videoListenersRef.current = false;
           };
         }
 
         syncNotifications();
         setIsReady(true);
+        initializedForRef.current = authUser._id;
+        console.log("[Stream] init complete for", authUser._id);
       } catch (err) {
-        console.error("Stream init failed:", err);
+        console.error("[Stream] init failed:", err);
+        // Reset so a retry is possible after an error.
+        initializingRef.current = false;
+      } finally {
+        initializingRef.current = false;
       }
     };
 
     init();
-    return () => {
-      detachListeners();
-      detachVideoListeners();
-    };
+    // Intentionally omitting syncNotifications / startRingtone from deps —
+    // they are stable callbacks and including them would re-trigger init.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authUser?._id, tokenData?.token]);
 
+  // ── Disconnect only on logout (authUser becomes null) ─────────────────────
+  useEffect(() => {
+    if (authUser) return; // still logged in — do nothing
+
+    const cleanup = async () => {
+      detachChatRef.current();
+      detachVideoRef.current();
+
+      if (chatSingleton?.userID) {
+        try { await chatSingleton.disconnectUser(); }
+        catch (err) { console.warn("[Stream] chat disconnect error:", err); }
+        chatSingleton = null;
+      }
+
+      if (videoSingleton) {
+        try { await videoSingleton.disconnectUser(); }
+        catch (err) { console.warn("[Stream] video disconnect error:", err); }
+        videoSingleton = null;
+      }
+
+      initializedForRef.current = null;
+      setChatClient(null);
+      setVideoClient(null);
+      setIsReady(false);
+      setNotifications([]);
+      setTotalUnread(0);
+      console.log("[Stream] disconnected on logout");
+    };
+
+    cleanup();
+  }, [authUser]);
+
+  // ── Context value ─────────────────────────────────────────────────────────
   const value = useMemo(
     () => ({
       chatClient,
