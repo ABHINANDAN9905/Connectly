@@ -1,10 +1,9 @@
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import useAuthUser from "../hooks/useAuthUser";
 import {
   StreamVideo,
   StreamCall,
-  CallControls,
   StreamTheme,
   CallingState,
   useCallStateHooks,
@@ -12,6 +11,7 @@ import {
 } from "@stream-io/video-react-sdk";
 import "@stream-io/video-react-sdk/dist/css/styles.css";
 import toast from "react-hot-toast";
+import { PhoneOffIcon } from "lucide-react";
 import PageLoader from "../components/PageLoader";
 import { NotificationContext } from "../contexts/notificationContext";
 
@@ -87,20 +87,91 @@ const CallPage = () => {
   );
 };
 
+// ─── Custom end-call button ────────────────────────────────────────────────
+const EndCallButton = ({ onEnd }) => (
+  <button
+    onClick={onEnd}
+    style={{
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      width: "56px",
+      height: "56px",
+      borderRadius: "50%",
+      background: "#ef4444",
+      border: "none",
+      cursor: "pointer",
+      boxShadow: "0 4px 12px rgba(239,68,68,0.5)",
+    }}
+    title="End call for everyone"
+  >
+    <PhoneOffIcon color="white" size={22} />
+  </button>
+);
+
+// ─── Call content (lives inside StreamCall context) ────────────────────────
 const CallContent = ({ isAudioOnly }) => {
-  const {
-    useCallCallingState,
-    useParticipants,
-    useLocalParticipant,
-    useRemoteParticipants,
-  } = useCallStateHooks();
-  const callingState = useCallCallingState();
-  const participants = useParticipants();
-  const localParticipant = useLocalParticipant();
+  const { useCallCallingState, useParticipants, useLocalParticipant, useRemoteParticipants } =
+    useCallStateHooks();
+  const callingState   = useCallCallingState();
+  const participants   = useParticipants();
+  const localParticipant  = useLocalParticipant();
   const remoteParticipants = useRemoteParticipants();
   const navigate = useNavigate();
 
-  if (callingState === CallingState.LEFT) return navigate("/");
+  // Access the live call object directly from the Stream hook
+  const { useCall } = useCallStateHooks();
+  const call = useCall();
+
+  const leavingRef = useRef(false); // prevents double-navigate
+
+  // ── Unified leave + navigate ───────────────────────────────────────────
+  const leaveAndGoHome = useCallback(async (reason = "unknown") => {
+    if (leavingRef.current) return;
+    leavingRef.current = true;
+    console.log("[CallContent] leaving call, reason:", reason);
+    try { await call?.leave(); } catch { /* ignore */ }
+    navigate("/");
+  }, [call, navigate]);
+
+  // ── End call for EVERYONE (caller presses the red button) ─────────────
+  const handleEndCall = async () => {
+    if (leavingRef.current) return;
+    leavingRef.current = true;
+    try {
+      console.log("[CallContent] endCall() →", call?.id);
+      await call?.endCall();   // terminates the call server-side for all participants
+    } catch (err) {
+      console.error("endCall failed:", err);
+    }
+    navigate("/");
+  };
+
+  // ── Listen for remote termination events (receiver side) ──────────────
+  useEffect(() => {
+    if (!call) return;
+
+    const onCallEnded        = () => leaveAndGoHome("call.ended");
+    const onSessionEnded     = () => leaveAndGoHome("call.session_ended");
+    const onCallRejected     = () => leaveAndGoHome("call.rejected");
+
+    call.on("call.ended",         onCallEnded);
+    call.on("call.session_ended", onSessionEnded);
+    call.on("call.rejected",      onCallRejected);
+
+    return () => {
+      call.off("call.ended",         onCallEnded);
+      call.off("call.session_ended", onSessionEnded);
+      call.off("call.rejected",      onCallRejected);
+    };
+  }, [call, leaveAndGoHome]);
+
+  // ── CallingState.LEFT means we already left (e.g. via SDK controls) ───
+  useEffect(() => {
+    if (callingState === CallingState.LEFT) {
+      leaveAndGoHome("CallingState.LEFT");
+    }
+  }, [callingState, leaveAndGoHome]);
 
   if (isAudioOnly) {
     return (
@@ -121,12 +192,7 @@ const CallContent = ({ isAudioOnly }) => {
             {participants.map((p) => (
               <div
                 key={p.sessionId}
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: "8px",
-                }}
+                style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}
               >
                 <div
                   style={{
@@ -152,7 +218,7 @@ const CallContent = ({ isAudioOnly }) => {
             ))}
           </div>
           <p style={{ color: "#d1d5db", fontSize: "18px" }}>Voice Call in Progress</p>
-          <CallControls />
+          <EndCallButton onEnd={handleEndCall} />
         </div>
       </StreamTheme>
     );
@@ -170,6 +236,7 @@ const CallContent = ({ isAudioOnly }) => {
           position: "relative",
         }}
       >
+        {/* Remote participant — full screen */}
         <div style={{ flex: 1, position: "relative", minHeight: 0 }}>
           {remoteParticipants.length > 0 ? (
             <ParticipantView
@@ -202,11 +269,11 @@ const CallContent = ({ isAudioOnly }) => {
               >
                 👤
               </div>
-              <p style={{ color: "white", fontSize: "18px" }}>
-                Waiting for others to join...
-              </p>
+              <p style={{ color: "white", fontSize: "18px" }}>Waiting for others to join...</p>
             </div>
           )}
+
+          {/* Local PiP */}
           {localParticipant && (
             <div
               style={{
@@ -229,6 +296,8 @@ const CallContent = ({ isAudioOnly }) => {
             </div>
           )}
         </div>
+
+        {/* Controls bar */}
         <div
           style={{
             flexShrink: 0,
@@ -238,7 +307,7 @@ const CallContent = ({ isAudioOnly }) => {
             background: "rgba(0,0,0,0.5)",
           }}
         >
-          <CallControls />
+          <EndCallButton onEnd={handleEndCall} />
         </div>
       </div>
     </StreamTheme>
