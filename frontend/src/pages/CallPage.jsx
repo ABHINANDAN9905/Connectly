@@ -104,6 +104,17 @@ const CallContent = ({ isAudioOnly }) => {
   const call               = useCall();
   const leavingRef         = useRef(false);
 
+  // FIX: Track whether we have successfully reached JOINED state.
+  // This prevents CallingState.LEFT from firing during SDK initialization
+  // (when the call briefly passes through intermediate states before joining).
+  const hasJoinedRef = useRef(false);
+
+  useEffect(() => {
+    if (callingState === CallingState.JOINED) {
+      hasJoinedRef.current = true;
+    }
+  }, [callingState]);
+
   const leaveAndGoHome = useCallback(async (reason = "unknown") => {
     if (leavingRef.current) return;
     leavingRef.current = true;
@@ -129,9 +140,12 @@ const CallContent = ({ isAudioOnly }) => {
     };
   }, [call, leaveAndGoHome]);
 
-  // Handle SDK-driven state transitions (network drop, leave via CallControls, etc.)
+  // FIX: Only treat CallingState.LEFT as a real termination after we have
+  // confirmed the call reached JOINED. Without this guard, the effect fires
+  // during SDK init (IDLE → JOINING → ...) before audio is even set up,
+  // causing a premature leaveAndGoHome and the unexpected redirect.
   useEffect(() => {
-    if (callingState === CallingState.LEFT) {
+    if (callingState === CallingState.LEFT && hasJoinedRef.current) {
       leaveAndGoHome("CallingState.LEFT");
     }
   }, [callingState, leaveAndGoHome]);
@@ -139,6 +153,28 @@ const CallContent = ({ isAudioOnly }) => {
   if (isAudioOnly) {
     return (
       <StreamTheme>
+        {/*
+          FIX: The Stream SDK requires its own <audio> elements to be mounted
+          in the DOM so it can bind remote audio tracks to them. When you render
+          a fully custom UI (avatars, speaking indicators) without ParticipantView,
+          those audio elements are never created, which causes:
+            - No remote audio playback
+            - AudioBindingsWatchdog: Dangling audio bindings detected warnings
+
+          Solution: render ParticipantView for every participant in a hidden
+          container. This satisfies the SDK's audio binding requirement while
+          keeping your custom avatar/speaking-indicator UI fully visible.
+        */}
+        <div style={{ display: "none" }}>
+          {participants.map((p) => (
+            <ParticipantView
+              key={p.sessionId}
+              participant={p}
+              muteAudio={false}
+            />
+          ))}
+        </div>
+
         <div
           style={{
             height: "100vh",

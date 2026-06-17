@@ -15,10 +15,16 @@ function CallButton({ targetUserId }) {
       toast.error("Call service not ready, try again in a moment.");
       return;
     }
+    if (!authUser?._id || !targetUserId) {
+      toast.error("Could not identify users for this call.");
+      return;
+    }
+
     try {
-      const callId = audioOnly
-        ? `audio-${Date.now()}-${targetUserId}`
-        : `video-${Date.now()}-${targetUserId}`;
+      // Deterministic callId: sorted user IDs so both sides always get same ID.
+      // Prefix with type so audio and video calls don't collide.
+      const prefix = audioOnly ? "audio" : "video";
+      const callId = `${prefix}-${[authUser._id, targetUserId].sort().join("-")}`;
 
       console.log("Generated callId:", callId);
 
@@ -27,7 +33,11 @@ function CallButton({ targetUserId }) {
       await call.getOrCreate({
         ring: true,
         data: {
-          members: targetUserId ? [{ user_id: targetUserId }] : undefined,
+          // FIX: include caller in members list — required for ring to work correctly.
+          members: [
+            { user_id: authUser._id },
+            { user_id: targetUserId },
+          ],
           custom: {
             callerName: authUser?.fullName || "Unknown",
             callerImage: authUser?.profilePic || "/favicon.ico",
@@ -38,8 +48,9 @@ function CallButton({ targetUserId }) {
 
       console.log("call.id after getOrCreate():", call.id);
 
-      const resolvedCallId = call.id || callId;
-      const url = audioOnly ? `/call/${resolvedCallId}?audio=true` : `/call/${resolvedCallId}`;
+      const url = audioOnly
+        ? `/call/${call.id}?audio=true`
+        : `/call/${call.id}`;
 
       console.log("Navigation URL:", url);
       navigate(url);
@@ -51,10 +62,18 @@ function CallButton({ targetUserId }) {
 
   return (
     <div className="p-3 border-b flex items-center justify-end gap-2 max-w-7xl mx-auto w-full absolute top-0">
-      <button onClick={() => startCall(true)} className="btn btn-info btn-sm text-white">
+      <button
+        onClick={() => startCall(true)}
+        className="btn btn-info btn-sm text-white"
+        title="Voice Call"
+      >
         <PhoneIcon className="size-6" />
       </button>
-      <button onClick={() => startCall(false)} className="btn btn-success btn-sm text-white">
+      <button
+        onClick={() => startCall(false)}
+        className="btn btn-success btn-sm text-white"
+        title="Video Call"
+      >
         <VideoIcon className="size-6" />
       </button>
     </div>
