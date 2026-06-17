@@ -259,12 +259,27 @@ export const NotificationProvider = ({ children }) => {
         if (!videoListenersAttached.current) {
           videoListenersAttached.current = true;
 
-          const onCallRinging = (call) => {
+          const onCallRinging = (event) => {
             try {
+              console.log("RING EVENT", event);
+              console.log("EVENT ID", event?.id);
+              console.log("EVENT CALL ID", event?.call?.id);
+
+              // Stream Video SDK wraps the Call instance inside event.call;
+              // fall back to the event itself for older SDK shapes.
+              const call = event?.call ?? event;
+
               const createdBy = call?.state?.createdBy;
               if (createdBy?.id === authUser._id) return;
+
+              if (!call?.id) {
+                console.warn("onCallRinging: could not resolve a valid call object", event);
+                return;
+              }
+
               setIncomingCall(call);
               startRingtone();
+
               if (document.visibilityState !== "visible") {
                 showBrowserNotification(
                   createdBy?.name || "Incoming call",

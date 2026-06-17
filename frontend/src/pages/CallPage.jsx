@@ -9,7 +9,6 @@ import {
   CallingState,
   useCallStateHooks,
   ParticipantView,
-  useStreamVideoClient,
 } from "@stream-io/video-react-sdk";
 import "@stream-io/video-react-sdk/dist/css/styles.css";
 import toast from "react-hot-toast";
@@ -20,9 +19,9 @@ const CallPage = () => {
   const { id: callId } = useParams();
   const [searchParams] = useSearchParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const isAudioOnly = searchParams.get("audio") === "true";
   const isIncoming = location.state?.incomingCall === true;
-
   const [call, setCall] = useState(null);
   const [isConnecting, setIsConnecting] = useState(true);
   const { authUser, isLoading } = useAuthUser();
@@ -30,16 +29,23 @@ const CallPage = () => {
 
   useEffect(() => {
     const initCall = async () => {
-      if (!videoClient || !authUser || !callId) return;
+      console.log("callId from URL:", callId);
+      console.log("isIncoming:", isIncoming);
+
+      if (!callId) {
+        toast.error("Invalid call ID. Redirecting...");
+        navigate("/");
+        return;
+      }
+
+      if (!videoClient || !authUser) return;
 
       try {
         const callInstance = videoClient.call("default", callId);
+        console.log("call instance:", callInstance);
 
-        if (isIncoming) {
-          await callInstance.join();
-        } else {
-          await callInstance.join({ create: true });
-        }
+        await callInstance.join({ create: true });
+        console.log("join status: joined successfully");
 
         try { await callInstance.microphone.enable(); } catch { /* ignore */ }
 
@@ -88,7 +94,6 @@ const CallContent = ({ isAudioOnly }) => {
     useLocalParticipant,
     useRemoteParticipants,
   } = useCallStateHooks();
-
   const callingState = useCallCallingState();
   const participants = useParticipants();
   const localParticipant = useLocalParticipant();
@@ -153,7 +158,6 @@ const CallContent = ({ isAudioOnly }) => {
     );
   }
 
-  // Video call layout
   return (
     <StreamTheme>
       <div
@@ -166,7 +170,6 @@ const CallContent = ({ isAudioOnly }) => {
           position: "relative",
         }}
       >
-        {/* Remote participant — full screen */}
         <div style={{ flex: 1, position: "relative", minHeight: 0 }}>
           {remoteParticipants.length > 0 ? (
             <ParticipantView
@@ -204,8 +207,6 @@ const CallContent = ({ isAudioOnly }) => {
               </p>
             </div>
           )}
-
-          {/* Local participant — small pip bottom right */}
           {localParticipant && (
             <div
               style={{
@@ -228,8 +229,6 @@ const CallContent = ({ isAudioOnly }) => {
             </div>
           )}
         </div>
-
-        {/* Controls */}
         <div
           style={{
             flexShrink: 0,

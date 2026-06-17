@@ -17,8 +17,10 @@ function CallButton({ targetUserId }) {
     }
     try {
       const callId = audioOnly
-        ? `audio-${targetUserId}`
-        : `video-${targetUserId}`;
+        ? `audio-${Date.now()}-${targetUserId}`
+        : `video-${Date.now()}-${targetUserId}`;
+
+      console.log("Generated callId:", callId);
 
       const call = videoClient.call("default", callId);
 
@@ -34,7 +36,12 @@ function CallButton({ targetUserId }) {
         },
       });
 
-      const url = audioOnly ? `/call/${call.id}?audio=true` : `/call/${call.id}`;
+      console.log("call.id after getOrCreate():", call.id);
+
+      const resolvedCallId = call.id || callId;
+      const url = audioOnly ? `/call/${resolvedCallId}?audio=true` : `/call/${resolvedCallId}`;
+
+      console.log("Navigation URL:", url);
       navigate(url);
     } catch (err) {
       console.error("Failed to start call:", err);

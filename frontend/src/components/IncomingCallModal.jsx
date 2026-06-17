@@ -1,6 +1,7 @@
 import { useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { PhoneIcon, PhoneOffIcon, VideoIcon } from "lucide-react";
+import toast from "react-hot-toast";
 import { NotificationContext } from "../contexts/notificationContext";
 
 const IncomingCallModal = () => {
@@ -18,10 +19,18 @@ const IncomingCallModal = () => {
 
   const handleAccept = () => {
     const call = acceptIncomingCall();
-    if (call) {
-      const url = isAudioOnly ? `/call/${call.id}?audio=true` : `/call/${call.id}`;
-      navigate(url, { state: { incomingCall: true } });
+    console.log("Accepted call object:", call);
+
+    const callId = call?.id || call?.call?.id;
+
+    if (!callId) {
+      console.warn("handleAccept: callId is missing", call);
+      toast.error("Could not resolve call ID. Please try again.");
+      return;
     }
+
+    const url = isAudioOnly ? `/call/${callId}?audio=true` : `/call/${callId}`;
+    navigate(url, { state: { incomingCall: true } });
   };
 
   const handleDecline = () => {
