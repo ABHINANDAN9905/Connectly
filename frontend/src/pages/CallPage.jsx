@@ -1,4 +1,4 @@
-import { useContext, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import useAuthUser from "../hooks/useAuthUser";
 import {
@@ -7,6 +7,7 @@ import {
   StreamTheme,
   CallingState,
   useCallStateHooks,
+  useCall,              // ← top-level export, NOT from useCallStateHooks()
   ParticipantView,
 } from "@stream-io/video-react-sdk";
 import "@stream-io/video-react-sdk/dist/css/styles.css";
@@ -111,21 +112,24 @@ const EndCallButton = ({ onEnd }) => (
 
 // ─── Call content (lives inside StreamCall context) ────────────────────────
 const CallContent = ({ isAudioOnly }) => {
-  const { useCallCallingState, useParticipants, useLocalParticipant, useRemoteParticipants } =
-    useCallStateHooks();
-  const callingState   = useCallCallingState();
-  const participants   = useParticipants();
+  const {
+    useCallCallingState,
+    useParticipants,
+    useLocalParticipant,
+    useRemoteParticipants,
+  } = useCallStateHooks();
+
+  const callingState      = useCallCallingState();
+  const participants      = useParticipants();
   const localParticipant  = useLocalParticipant();
   const remoteParticipants = useRemoteParticipants();
-  const navigate = useNavigate();
+  const navigate          = useNavigate();
 
-  // Access the live call object directly from the Stream hook
-  const { useCall } = useCallStateHooks();
+  // useCall() is a standalone hook — reads the call from StreamCall context
   const call = useCall();
 
-  const leavingRef = useRef(false); // prevents double-navigate
+  const leavingRef = useRef(false);
 
-  // ── Unified leave + navigate ───────────────────────────────────────────
   const leaveAndGoHome = useCallback(async (reason = "unknown") => {
     if (leavingRef.current) return;
     leavingRef.current = true;
@@ -134,26 +138,25 @@ const CallContent = ({ isAudioOnly }) => {
     navigate("/");
   }, [call, navigate]);
 
-  // ── End call for EVERYONE (caller presses the red button) ─────────────
   const handleEndCall = async () => {
     if (leavingRef.current) return;
     leavingRef.current = true;
     try {
       console.log("[CallContent] endCall() →", call?.id);
-      await call?.endCall();   // terminates the call server-side for all participants
+      await call?.endCall();
     } catch (err) {
       console.error("endCall failed:", err);
     }
     navigate("/");
   };
 
-  // ── Listen for remote termination events (receiver side) ──────────────
+  // Listen for remote termination (receiver auto-exits)
   useEffect(() => {
     if (!call) return;
 
-    const onCallEnded        = () => leaveAndGoHome("call.ended");
-    const onSessionEnded     = () => leaveAndGoHome("call.session_ended");
-    const onCallRejected     = () => leaveAndGoHome("call.rejected");
+    const onCallEnded    = () => leaveAndGoHome("call.ended");
+    const onSessionEnded = () => leaveAndGoHome("call.session_ended");
+    const onCallRejected = () => leaveAndGoHome("call.rejected");
 
     call.on("call.ended",         onCallEnded);
     call.on("call.session_ended", onSessionEnded);
@@ -166,7 +169,7 @@ const CallContent = ({ isAudioOnly }) => {
     };
   }, [call, leaveAndGoHome]);
 
-  // ── CallingState.LEFT means we already left (e.g. via SDK controls) ───
+  // Handle SDK-driven state transitions (network drop, etc.)
   useEffect(() => {
     if (callingState === CallingState.LEFT) {
       leaveAndGoHome("CallingState.LEFT");
@@ -236,7 +239,6 @@ const CallContent = ({ isAudioOnly }) => {
           position: "relative",
         }}
       >
-        {/* Remote participant — full screen */}
         <div style={{ flex: 1, position: "relative", minHeight: 0 }}>
           {remoteParticipants.length > 0 ? (
             <ParticipantView
@@ -273,7 +275,6 @@ const CallContent = ({ isAudioOnly }) => {
             </div>
           )}
 
-          {/* Local PiP */}
           {localParticipant && (
             <div
               style={{
@@ -297,7 +298,6 @@ const CallContent = ({ isAudioOnly }) => {
           )}
         </div>
 
-        {/* Controls bar */}
         <div
           style={{
             flexShrink: 0,
