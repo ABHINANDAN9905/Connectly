@@ -9,7 +9,7 @@ import {
   useCallStateHooks,
   useCall,
   ParticipantView,
-  CallControls,         // ← restored
+  CallControls,
 } from "@stream-io/video-react-sdk";
 import "@stream-io/video-react-sdk/dist/css/styles.css";
 import toast from "react-hot-toast";
@@ -112,26 +112,24 @@ const CallContent = ({ isAudioOnly }) => {
     navigate("/");
   }, [call, navigate]);
 
-  // Remote termination — fires on the OTHER participant's screen
+  // Only listen for real call termination events — NOT call.rejected
+  // (call.rejected fires as a ringing-phase echo even after both parties joined)
   useEffect(() => {
     if (!call) return;
 
     const onCallEnded    = () => leaveAndGoHome("call.ended");
     const onSessionEnded = () => leaveAndGoHome("call.session_ended");
-    const onCallRejected = () => leaveAndGoHome("call.rejected");
 
     call.on("call.ended",         onCallEnded);
     call.on("call.session_ended", onSessionEnded);
-    call.on("call.rejected",      onCallRejected);
 
     return () => {
       call.off("call.ended",         onCallEnded);
       call.off("call.session_ended", onSessionEnded);
-      call.off("call.rejected",      onCallRejected);
     };
   }, [call, leaveAndGoHome]);
 
-  // SDK-driven state transitions (network drop, leave via CallControls, etc.)
+  // Handle SDK-driven state transitions (network drop, leave via CallControls, etc.)
   useEffect(() => {
     if (callingState === CallingState.LEFT) {
       leaveAndGoHome("CallingState.LEFT");
@@ -157,7 +155,12 @@ const CallContent = ({ isAudioOnly }) => {
             {participants.map((p) => (
               <div
                 key={p.sessionId}
-                style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: "8px",
+                }}
               >
                 <div
                   style={{
@@ -183,7 +186,6 @@ const CallContent = ({ isAudioOnly }) => {
             ))}
           </div>
           <p style={{ color: "#d1d5db", fontSize: "18px" }}>Voice Call in Progress</p>
-          {/* All built-in Stream controls: mic, camera, reactions, screen share, leave */}
           <CallControls />
         </div>
       </StreamTheme>
@@ -206,6 +208,7 @@ const CallContent = ({ isAudioOnly }) => {
           {remoteParticipants.length > 0 ? (
             <ParticipantView
               participant={remoteParticipants[0]}
+              muteAudio={false}
               style={{ width: "100%", height: "100%" }}
             />
           ) : (
@@ -234,7 +237,9 @@ const CallContent = ({ isAudioOnly }) => {
               >
                 👤
               </div>
-              <p style={{ color: "white", fontSize: "18px" }}>Waiting for others to join...</p>
+              <p style={{ color: "white", fontSize: "18px" }}>
+                Waiting for others to join...
+              </p>
             </div>
           )}
 
@@ -261,7 +266,6 @@ const CallContent = ({ isAudioOnly }) => {
           )}
         </div>
 
-        {/* All built-in Stream controls: mic, camera, reactions, screen share, leave */}
         <div
           style={{
             flexShrink: 0,
