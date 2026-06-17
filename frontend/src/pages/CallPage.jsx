@@ -1,6 +1,5 @@
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import useAuthUser from "../hooks/useAuthUser";
 import {
   StreamVideo,
   StreamCall,
@@ -13,8 +12,52 @@ import {
 } from "@stream-io/video-react-sdk";
 import "@stream-io/video-react-sdk/dist/css/styles.css";
 import toast from "react-hot-toast";
+import { PhoneOffIcon } from "lucide-react";
 import PageLoader from "../components/PageLoader";
 import { NotificationContext } from "../contexts/notificationContext";
+
+// ─── Send system message into the DM channel ──────────────────────────────
+const sendCallMessage = async (chatClient, targetUserId, text) => {
+  if (!chatClient || !targetUserId) return;
+  try {
+    const channel = chatClient.channel("messaging", {
+      members: [chatClient.userID, targetUserId],
+    });
+    await channel.sendMessage({ text, silent: false });
+    console.log("[CallPage] chat message sent:", text);
+  } catch (err) {
+    console.warn("[CallPage] sendCallMessage failed:", err);
+  }
+};
+
+// Call IDs: "audio-<timestamp>-<targetUserId>" or "video-<timestamp>-<targetUserId>"
+const getTargetUserIdFromCallId = (callId) => {
+  if (!callId) return null;
+  const parts = callId.split("-");
+  return parts.length >= 3 ? parts.slice(2).join("-") : null;
+};
+
+// ─── Custom leave button — calls endCall() globally ───────────────────────
+const EndCallButton = ({ onEnd }) => (
+  <button
+    onClick={onEnd}
+    style={{
+      width: "56px",
+      height: "56px",
+      borderRadius: "50%",
+      background: "#ef4444",
+      border: "none",
+      cursor: "pointer",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      boxShadow: "0 4px 12px rgba(239,68,68,0.5)",
+    }}
+    title="End call for everyone"
+  >
+    <PhoneOffIcon color="white" size={22} />
+  </button>
+);
 
 const CallPage = () => {
   const { id: callId } = useParams();
@@ -88,27 +131,6 @@ const CallPage = () => {
   );
 };
 
-// ─── Send system message into the DM channel ──────────────────────────────
-const sendCallMessage = async (chatClient, targetUserId, text) => {
-  if (!chatClient || !targetUserId) return;
-  try {
-    const channel = chatClient.channel("messaging", {
-      members: [chatClient.userID, targetUserId],
-    });
-    await channel.sendMessage({ text, silent: false });
-    console.log("[CallPage] chat message sent:", text);
-  } catch (err) {
-    console.warn("[CallPage] sendCallMessage failed:", err);
-  }
-};
-
-// Call IDs: "audio-<timestamp>-<targetUserId>" or "video-<timestamp>-<targetUserId>"
-const getTargetUserIdFromCallId = (callId) => {
-  if (!callId) return null;
-  const parts = callId.split("-");
-  return parts.length >= 3 ? parts.slice(2).join("-") : null;
-};
-
 const CallContent = ({ isAudioOnly, callId }) => {
   const {
     useCallCallingState,
@@ -126,30 +148,51 @@ const CallContent = ({ isAudioOnly, callId }) => {
 
   const { authUser, chatClient } = useContext(NotificationContext);
   const targetUserId = getTargetUserIdFromCallId(callId);
+  const endingRef    = useRef(false);
 
-  // Two separate guards — one for local leave, one for remote termination
-  const localEndingRef = useRef(false);
-  const remoteEndedRef = useRef(false);
+  // ── Shared exit — used by both sides ──────────────────────────────────
+  const exitCall = useCallback(async (reason) => {
+    if (endingRef.current) return;
+    endingRef.current = true;
+    console.log("[CallContent] exitCall reason:", reason);
+    try { await call?.leave(); } catch { /* ignore */ }
+    navigate("/");
+  }, [call, navigate]);
 
-  // ── User B: receive remote termination ────────────────────────────────
+  // ── THIS USER presses the red button ──────────────────────────────────
+  // We call endCall() FIRST (server-side global termination),
+  // which fires call.ended on the OTHER side BEFORE we navigate away.
+  const handleEndCall = useCallback(async () => {
+    if (endingRef.current) return;
+    endingRef.current = true;
+
+    const userName = authUser?.fullName || "Unknown";
+    console.log("[CallContent] who ended the call:", userName);
+
+    try {
+      await call?.endCall();
+      console.log("[CallContent] endCall() fired — remote will receive call.ended");
+    } catch (err) {
+      console.warn("[CallContent] endCall() failed:", err);
+    }
+
+    await sendCallMessage(chatClient, targetUserId, `📞 Call ended by ${userName}`);
+    console.log("[CallContent] navigating home after ending call");
+    navigate("/");
+  }, [call, authUser, chatClient, targetUserId, navigate]);
+
+  // ── OTHER side receives call.ended → auto-exit ────────────────────────
   useEffect(() => {
     if (!call) return;
 
     const onCallEnded = async (event) => {
-      if (remoteEndedRef.current) return;
-      remoteEndedRef.current = true;
       console.log("[CallContent] global termination event received:", event);
-      try { await call.leave(); } catch { /* ignore */ }
-      console.log("[CallContent] navigating home — remote call.ended");
-      navigate("/");
+      await exitCall("call.ended");
     };
 
     const onSessionEnded = async (event) => {
-      if (remoteEndedRef.current) return;
-      remoteEndedRef.current = true;
       console.log("[CallContent] session ended event received:", event);
-      try { await call.leave(); } catch { /* ignore */ }
-      navigate("/");
+      await exitCall("call.session_ended");
     };
 
     call.on("call.ended",         onCallEnded);
@@ -159,33 +202,7 @@ const CallContent = ({ isAudioOnly, callId }) => {
       call.off("call.ended",         onCallEnded);
       call.off("call.session_ended", onSessionEnded);
     };
-  }, [call, navigate]);
-
-  // ── User A: local leave → upgrade to global endCall() ─────────────────
-  useEffect(() => {
-    if (callingState !== CallingState.LEFT) return;
-    if (localEndingRef.current) return;
-    if (remoteEndedRef.current) return; // remote already handled, don't double-navigate
-    localEndingRef.current = true;
-
-    const handleLeft = async () => {
-      const userName = authUser?.fullName || "Unknown";
-      console.log("[CallContent] who ended the call:", userName);
-
-      try {
-        await call?.endCall();
-        console.log("[CallContent] endCall() fired — all participants will receive call.ended");
-      } catch (err) {
-        console.warn("[CallContent] endCall() failed:", err);
-      }
-
-      await sendCallMessage(chatClient, targetUserId, `📞 Call ended by ${userName}`);
-      console.log("[CallContent] navigating home after ending call");
-      navigate("/");
-    };
-
-    handleLeft();
-  }, [callingState]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [call, exitCall]);
 
   if (isAudioOnly) {
     return (
@@ -237,7 +254,11 @@ const CallContent = ({ isAudioOnly, callId }) => {
             ))}
           </div>
           <p style={{ color: "#d1d5db", fontSize: "18px" }}>Voice Call in Progress</p>
-          <CallControls />
+          {/* CallControls for mic/audio — leave button replaced below */}
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <CallControls onLeave={() => {}} />
+            <EndCallButton onEnd={handleEndCall} />
+          </div>
         </div>
       </StreamTheme>
     );
@@ -321,12 +342,18 @@ const CallContent = ({ isAudioOnly, callId }) => {
           style={{
             flexShrink: 0,
             display: "flex",
+            alignItems: "center",
             justifyContent: "center",
+            gap: "12px",
             padding: "16px",
             background: "rgba(0,0,0,0.5)",
           }}
         >
-          <CallControls />
+          {/* CallControls keeps mic/camera/reactions/screenshare/recording */}
+          {/* onLeave={()=>{}} prevents its built-in leave from firing */}
+          <CallControls onLeave={() => {}} />
+          {/* Our button calls endCall() globally instead */}
+          <EndCallButton onEnd={handleEndCall} />
         </div>
       </div>
     </StreamTheme>
