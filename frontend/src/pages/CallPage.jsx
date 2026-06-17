@@ -76,7 +76,7 @@ const CallPage = () => {
       {videoClient && call ? (
         <StreamVideo client={videoClient}>
           <StreamCall call={call}>
-            <CallContent isAudioOnly={isAudioOnly} />
+            <CallContent isAudioOnly={isAudioOnly} callId={callId} />
           </StreamCall>
         </StreamVideo>
       ) : (
@@ -88,7 +88,28 @@ const CallPage = () => {
   );
 };
 
-const CallContent = ({ isAudioOnly }) => {
+// ─── Send system message into the DM channel ──────────────────────────────
+const sendCallMessage = async (chatClient, targetUserId, text) => {
+  if (!chatClient || !targetUserId) return;
+  try {
+    const channel = chatClient.channel("messaging", {
+      members: [chatClient.userID, targetUserId],
+    });
+    await channel.sendMessage({ text, silent: false });
+    console.log("[CallPage] chat message sent:", text);
+  } catch (err) {
+    console.warn("[CallPage] sendCallMessage failed:", err);
+  }
+};
+
+// Call IDs: "audio-<timestamp>-<targetUserId>" or "video-<timestamp>-<targetUserId>"
+const getTargetUserIdFromCallId = (callId) => {
+  if (!callId) return null;
+  const parts = callId.split("-");
+  return parts.length >= 3 ? parts.slice(2).join("-") : null;
+};
+
+const CallContent = ({ isAudioOnly, callId }) => {
   const {
     useCallCallingState,
     useParticipants,
@@ -102,23 +123,34 @@ const CallContent = ({ isAudioOnly }) => {
   const remoteParticipants = useRemoteParticipants();
   const navigate           = useNavigate();
   const call               = useCall();
-  const leavingRef         = useRef(false);
 
-  const leaveAndGoHome = useCallback(async (reason = "unknown") => {
-    if (leavingRef.current) return;
-    leavingRef.current = true;
-    console.log("[CallContent] leaving call, reason:", reason);
-    try { await call?.leave(); } catch { /* ignore */ }
-    navigate("/");
-  }, [call, navigate]);
+  const { authUser, chatClient } = useContext(NotificationContext);
+  const targetUserId = getTargetUserIdFromCallId(callId);
 
-  // Only listen for real call termination events — NOT call.rejected
-  // (call.rejected fires as a ringing-phase echo even after both parties joined)
+  // Two separate guards — one for local leave, one for remote termination
+  const localEndingRef = useRef(false);
+  const remoteEndedRef = useRef(false);
+
+  // ── User B: receive remote termination ────────────────────────────────
   useEffect(() => {
     if (!call) return;
 
-    const onCallEnded    = () => leaveAndGoHome("call.ended");
-    const onSessionEnded = () => leaveAndGoHome("call.session_ended");
+    const onCallEnded = async (event) => {
+      if (remoteEndedRef.current) return;
+      remoteEndedRef.current = true;
+      console.log("[CallContent] global termination event received:", event);
+      try { await call.leave(); } catch { /* ignore */ }
+      console.log("[CallContent] navigating home — remote call.ended");
+      navigate("/");
+    };
+
+    const onSessionEnded = async (event) => {
+      if (remoteEndedRef.current) return;
+      remoteEndedRef.current = true;
+      console.log("[CallContent] session ended event received:", event);
+      try { await call.leave(); } catch { /* ignore */ }
+      navigate("/");
+    };
 
     call.on("call.ended",         onCallEnded);
     call.on("call.session_ended", onSessionEnded);
@@ -127,14 +159,33 @@ const CallContent = ({ isAudioOnly }) => {
       call.off("call.ended",         onCallEnded);
       call.off("call.session_ended", onSessionEnded);
     };
-  }, [call, leaveAndGoHome]);
+  }, [call, navigate]);
 
-  // Handle SDK-driven state transitions (network drop, leave via CallControls, etc.)
+  // ── User A: local leave → upgrade to global endCall() ─────────────────
   useEffect(() => {
-    if (callingState === CallingState.LEFT) {
-      leaveAndGoHome("CallingState.LEFT");
-    }
-  }, [callingState, leaveAndGoHome]);
+    if (callingState !== CallingState.LEFT) return;
+    if (localEndingRef.current) return;
+    if (remoteEndedRef.current) return; // remote already handled, don't double-navigate
+    localEndingRef.current = true;
+
+    const handleLeft = async () => {
+      const userName = authUser?.fullName || "Unknown";
+      console.log("[CallContent] who ended the call:", userName);
+
+      try {
+        await call?.endCall();
+        console.log("[CallContent] endCall() fired — all participants will receive call.ended");
+      } catch (err) {
+        console.warn("[CallContent] endCall() failed:", err);
+      }
+
+      await sendCallMessage(chatClient, targetUserId, `📞 Call ended by ${userName}`);
+      console.log("[CallContent] navigating home after ending call");
+      navigate("/");
+    };
+
+    handleLeft();
+  }, [callingState]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (isAudioOnly) {
     return (
