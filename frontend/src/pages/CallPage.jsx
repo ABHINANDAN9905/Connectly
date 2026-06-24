@@ -278,7 +278,6 @@ const CallContent = ({ isAudioOnly }) => {
               </p>
             </div>
           )}
-
           {localParticipant && (
             <div
               style={{
@@ -301,7 +300,6 @@ const CallContent = ({ isAudioOnly }) => {
             </div>
           )}
         </div>
-
         <div
           style={{
             flexShrink: 0,
@@ -317,5 +315,4 @@ const CallContent = ({ isAudioOnly }) => {
     </StreamTheme>
   );
 };
-
 export default CallPage;

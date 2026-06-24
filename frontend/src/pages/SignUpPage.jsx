@@ -3,21 +3,17 @@ import { ShipWheelIcon } from "lucide-react";
 import { Link } from "react-router";
 import { FcGoogle } from "react-icons/fc";
 import useSignUp from "../hooks/useSignUp";
-
 const SignUpPage = () => {
   const [signupData, setSignupData] = useState({
     fullName: "",
     email: "",
     password: "",
   });
-
   const { isPending, error, signupMutation, successMessage } = useSignUp();
-
   const handleSignup = (e) => {
     e.preventDefault();
     signupMutation(signupData);
   };
-
   return (
     <div className="h-screen flex items-center justify-center p-4 sm:p-6 md:p-8" data-theme="forest">
       <div className="border border-primary/25 flex flex-col lg:flex-row w-full max-w-5xl mx-auto bg-base-100 rounded-xl shadow-lg overflow-hidden">
@@ -105,7 +101,6 @@ const SignUpPage = () => {
                       Password must be at least 6 characters long
                     </p>
                   </div>
-
                   <div className="form-control">
                     <label className="label cursor-pointer justify-start gap-2">
                       <input type="checkbox" className="checkbox checkbox-sm" required />
@@ -117,7 +112,6 @@ const SignUpPage = () => {
                     </label>
                   </div>
                 </div>
-
                 <button className="btn btn-primary w-full" type="submit">
                   {isPending ? (
                     <>
@@ -142,7 +136,6 @@ const SignUpPage = () => {
                   <FcGoogle className="w-5 h-5" />
                   Continue with Google
                 </button>
-
                 <div className="text-center mt-4">
                   <p className="text-sm">
                     Already have an account?{" "}
@@ -155,7 +148,6 @@ const SignUpPage = () => {
             </form>
           </div>
         </div>
-
         {/* RIGHT SIDE */}
         <div className="hidden lg:flex w-full lg:w-1/2 bg-primary/10 items-center justify-center">
           <div className="max-w-md p-8">
@@ -174,5 +166,4 @@ const SignUpPage = () => {
     </div>
   );
 };
-
 export default SignUpPage;
