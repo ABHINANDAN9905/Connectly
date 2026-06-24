@@ -4,7 +4,6 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import path from "path";
 import fs from "fs";
-import passport from "./lib/passport.js";  // ← add karo
 import authRoutes from "./routes/auth.route.js";
 import userRoutes from "./routes/user.route.js";
 import chatRoutes from "./routes/chat.route.js";
@@ -22,8 +21,8 @@ app.use(
 );
 app.use(express.json());
 app.use(cookieParser());
-app.use(passport.initialize());  // ← add karo
-app.use(passport.session());  // ← add karo
+// app.use(passport.initialize());  // ← add karo
+// app.use(passport.session());  // ← add karo
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/chat", chatRoutes);
