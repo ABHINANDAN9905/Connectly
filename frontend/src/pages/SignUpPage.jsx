@@ -3,7 +3,7 @@ import { ShipWheelIcon } from "lucide-react";
 import { Link } from "react-router";
 import { FcGoogle } from "react-icons/fc";
 import useSignUp from "../hooks/useSignUp";
-const SignUpPage = () => {
+const SignUpPage = () => {x
   const [signupData, setSignupData] = useState({
     fullName: "",
     email: "",
@@ -26,7 +26,6 @@ const SignUpPage = () => {
               Connectly
             </span>
           </div>
-
           {/* ERROR MESSAGE */}
           {error && (
             <div className="alert alert-error mb-4">
@@ -52,7 +51,6 @@ const SignUpPage = () => {
                     Join Connectly and start connecting with people around the world!
                   </p>
                 </div>
-
                 <div className="space-y-3">
                   {/* FULLNAME */}
                   <div className="form-control w-full">
@@ -68,7 +66,6 @@ const SignUpPage = () => {
                       required
                     />
                   </div>
-
                   {/* EMAIL */}
                   <div className="form-control w-full">
                     <label className="label">
@@ -83,7 +80,6 @@ const SignUpPage = () => {
                       required
                     />
                   </div>
-
                   {/* PASSWORD */}
                   <div className="form-control w-full">
                     <label className="label">
@@ -122,10 +118,8 @@ const SignUpPage = () => {
                     "Create Account"
                   )}
                 </button>
-
                 {/* Google Signup Button */}
                 <div className="divider">OR</div>
-
                 <button
                   type="button"
                   onClick={() => {
