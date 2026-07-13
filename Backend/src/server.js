@@ -22,15 +22,13 @@ app.use(
 );
 app.use(express.json());
 app.use(cookieParser());
-// app.use(passport.initialize());  // ← add karo
-// app.use(passport.session());  // ← add karo
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/groups", groupRoutes);
 if (process.env.NODE_ENV === "production") {
   const frontendDist = path.join(__dirname, "../frontend/dist");
-  if (fs.existsSync(frontendDist)) {
+  if (fs.existsSync(frontendDist)) {``
     app.use(express.static(frontendDist));
     app.get("*", (req, res) => {
       res.sendFile(path.join(frontendDist, "index.html"));
@@ -45,3 +43,4 @@ app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
   connectDB();
 });
+

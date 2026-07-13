@@ -1,6 +1,7 @@
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import useAuthUser from "../hooks/useAuthUser";
+import { stopRingback } from "../lib/ringback";
 import {
   StreamVideo,
   StreamCall,
@@ -113,11 +114,29 @@ const CallContent = ({ isAudioOnly }) => {
     if (callingState === CallingState.JOINED) {
       hasJoinedRef.current = true;
     }
+    // NOTE: we do NOT call stopRingback() here. `JOINED` fires the moment
+    // *this* client finishes joining the room — before the other side has
+    // answered. Stopping the tone here would cut it off on the caller's
+    // side while the receiver's phone is still ringing. See the
+    // remoteParticipants-based effect below for the correct trigger.
   }, [callingState]);
+
+  // NEW: stop the ringback the instant the remote participant actually
+  // joins — this is the real "answered" signal (WhatsApp/Telegram behavior).
+  useEffect(() => {
+    if (remoteParticipants.length > 0) {
+      stopRingback();
+    }
+  }, [remoteParticipants]);
 
   const leaveAndGoHome = useCallback(async (reason = "unknown") => {
     if (leavingRef.current) return;
     leavingRef.current = true;
+
+    // NEW: covers reject / end / timeout / caller-hangs-up — all of these
+    // route through leaveAndGoHome, so stopping the tone here catches them all.
+    stopRingback();
+
     console.log("[CallContent] leaving call, reason:", reason);
     try { await call?.leave(); } catch { /* ignore */ }
     navigate("/");
@@ -149,6 +168,15 @@ const CallContent = ({ isAudioOnly }) => {
       leaveAndGoHome("CallingState.LEFT");
     }
   }, [callingState, leaveAndGoHome]);
+
+  // NEW: absolute safety net — guarantees the tone is never left playing
+  // if this component unmounts for any reason (fast navigation, error
+  // boundary, etc.), independent of the other exit paths above.
+  useEffect(() => {
+    return () => {
+      stopRingback();
+    };
+  }, []);
 
   if (isAudioOnly) {
     return (

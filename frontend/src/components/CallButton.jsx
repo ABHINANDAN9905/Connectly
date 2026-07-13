@@ -4,6 +4,7 @@ import { VideoIcon, PhoneIcon } from "lucide-react";
 import { NotificationContext } from "../contexts/notificationContext";
 import useAuthUser from "../hooks/useAuthUser";
 import toast from "react-hot-toast";
+import { startRingback } from "../lib/ringback";
 
 function CallButton({ targetUserId }) {
   const { videoClient } = useContext(NotificationContext);
@@ -45,6 +46,8 @@ function CallButton({ targetUserId }) {
           },
         },
       });
+      startRingback();
+      navigate(`/call/${call.id}${audioOnly ? "?audio=true" : ""}`);
 
       console.log("call.id after getOrCreate():", call.id);
 
