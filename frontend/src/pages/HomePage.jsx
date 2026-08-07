@@ -10,7 +10,6 @@ import { Link } from "react-router-dom";
 import { CheckCircleIcon, MapPinIcon, UserPlusIcon, UsersIcon } from "lucide-react";
 
 import { capitialize } from "../lib/utils";
-
 import FriendCard from "../components/FriendCard";
 import { getLanguageFlag } from "../lib/language.jsx";
 import NoFriendsFound from "../components/NoFriendsFound";

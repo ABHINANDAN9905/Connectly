@@ -146,13 +146,10 @@ const CallContent = ({ isAudioOnly }) => {
   // (call.rejected fires as a ringing-phase echo even after both parties joined)
   useEffect(() => {
     if (!call) return;
-
     const onCallEnded    = () => leaveAndGoHome("call.ended");
     const onSessionEnded = () => leaveAndGoHome("call.session_ended");
-
     call.on("call.ended",         onCallEnded);
     call.on("call.session_ended", onSessionEnded);
-
     return () => {
       call.off("call.ended",         onCallEnded);
       call.off("call.session_ended", onSessionEnded);

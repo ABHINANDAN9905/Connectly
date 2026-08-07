@@ -3,7 +3,7 @@ import { ShipWheelIcon } from "lucide-react";
 import { Link } from "react-router";
 import { FcGoogle } from "react-icons/fc";
 import useSignUp from "../hooks/useSignUp";
-const SignUpPage = () => {x
+const SignUpPage = () => {
   const [signupData, setSignupData] = useState({
     fullName: "",
     email: "",
