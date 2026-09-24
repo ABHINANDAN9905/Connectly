@@ -173,3 +173,454 @@
 .str-chat__message-input-inner button {
   flex-shrink: 0 !important;
 }
+
+/* =========================================================
+   LOGIN / SIGNUP
+   THICK MULTI-COLOR ANIMATED BORDER + SHADOW
+   ========================================================= */
+
+.animated-border {
+  position: relative;
+  padding: 4px;
+  border-radius: 30px;
+  overflow: hidden;
+  isolation: isolate;
+
+  /* Card shadow */
+  box-shadow:
+    0 12px 35px rgba(0, 0, 0, 0.12),
+    0 0 25px rgba(121, 40, 202, 0.10);
+}
+
+/* Rotating colorful border */
+.animated-border::before {
+  content: "";
+  position: absolute;
+  inset: -150%;
+  background: conic-gradient(
+    from 0deg,
+    #ff0080 0deg,
+    #7928ca 60deg,
+    #00c6ff 120deg,
+    #00f5a0 180deg,
+    #ffe600 240deg,
+    #ff6a00 300deg,
+    #ff0080 360deg
+  );
+
+  animation: animatedBorder 5s linear infinite;
+  z-index: -2;
+}
+
+/* Inner white surface */
+.animated-border::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  background: #ffffff;
+  border-radius: 26px;
+  z-index: -1;
+}
+
+/* Border rotation */
+@keyframes animatedBorder {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* =========================================================
+   IMPORTANT:
+   Inner content stays above the animated border
+   ========================================================= */
+
+/* =========================================================
+   CONNECTLY LOGIN / SIGNUP ANIMATED BACKGROUND
+   ========================================================= */
+
+.auth-background {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+
+  background:
+    radial-gradient(
+      circle at 15% 15%,
+      rgba(255, 106, 0, 0.06),
+      transparent 30%
+    ),
+    radial-gradient(
+      circle at 85% 85%,
+      rgba(139, 92, 246, 0.06),
+      transparent 32%
+    ),
+    #fafafa;
+}
+
+
+/* =========================================================
+   FLOATING COLOR ORBS
+   ========================================================= */
+
+.auth-orb {
+  position: absolute;
+  border-radius: 9999px;
+
+  filter: blur(85px);
+  opacity: 0.11;
+
+  pointer-events: none;
+
+  animation: authOrbFloat 15s ease-in-out infinite alternate;
+
+  will-change: transform;
+}
+
+
+/* Orange */
+
+.auth-orb-orange {
+  width: 300px;
+  height: 300px;
+
+  top: -120px;
+  left: -100px;
+
+  background: #ff6a00;
+
+  animation-duration: 14s;
+}
+
+
+/* Purple */
+
+.auth-orb-purple {
+  width: 340px;
+  height: 340px;
+
+  top: -120px;
+  right: -120px;
+
+  background: #8b5cf6;
+
+  animation-duration: 17s;
+  animation-delay: -3s;
+}
+
+
+/* Blue */
+
+.auth-orb-blue {
+  width: 320px;
+  height: 320px;
+
+  bottom: -130px;
+  right: -100px;
+
+  background: #3b82f6;
+
+  animation-duration: 16s;
+  animation-delay: -5s;
+}
+
+
+/* Pink */
+
+.auth-orb-pink {
+  width: 280px;
+  height: 280px;
+
+  bottom: -110px;
+  left: -90px;
+
+  background: #ec4899;
+
+  animation-duration: 18s;
+  animation-delay: -7s;
+}
+
+
+/* Cyan */
+
+.auth-orb-cyan {
+  width: 240px;
+  height: 240px;
+
+  top: 42%;
+  right: 12%;
+
+  background: #06b6d4;
+
+  opacity: 0.07;
+
+  animation-duration: 16s;
+  animation-delay: -4s;
+}
+
+
+/* Orb movement */
+
+@keyframes authOrbFloat {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  50% {
+    transform: translate3d(40px, -30px, 0) scale(1.08);
+  }
+
+  100% {
+    transform: translate3d(-25px, 35px, 0) scale(0.95);
+  }
+}
+
+
+/* =========================================================
+   CONNECTED NETWORK LINES
+   ========================================================= */
+
+.auth-network {
+  position: absolute;
+
+  inset: 0;
+
+  width: 100%;
+  height: 100%;
+
+  opacity: 0.13;
+
+  pointer-events: none;
+}
+
+
+.auth-network line {
+  stroke: #8b5cf6;
+
+  stroke-width: 1;
+
+  stroke-dasharray: 5 9;
+
+  animation: networkLineMove 9s linear infinite;
+}
+
+
+@keyframes networkLineMove {
+  from {
+    stroke-dashoffset: 0;
+  }
+
+  to {
+    stroke-dashoffset: -120;
+  }
+}
+
+
+/* =========================================================
+   GLOWING PARTICLES
+   ========================================================= */
+
+.auth-particle {
+  position: absolute;
+
+  border-radius: 50%;
+
+  opacity: 0.4;
+
+  animation: particleFloat 6s ease-in-out infinite;
+
+  will-change: transform, opacity;
+}
+
+
+@keyframes particleFloat {
+  0%,
+  100% {
+    transform:
+      translate3d(0, 0, 0)
+      scale(0.8);
+
+    opacity: 0.3;
+  }
+
+  25% {
+    transform:
+      translate3d(12px, -18px, 0)
+      scale(1);
+
+    opacity: 0.5;
+  }
+
+  50% {
+    transform:
+      translate3d(-10px, -30px, 0)
+      scale(1.15);
+
+    opacity: 0.75;
+  }
+
+  75% {
+    transform:
+      translate3d(18px, -12px, 0)
+      scale(1);
+
+    opacity: 0.5;
+  }
+}
+
+
+/* =========================================================
+   SUBTLE BACKGROUND GRID
+   ========================================================= */
+
+.auth-grid {
+  position: absolute;
+
+  inset: 0;
+
+  opacity: 0.025;
+
+  background-image:
+    linear-gradient(
+      rgba(17, 24, 39, 1) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      rgba(17, 24, 39, 1) 1px,
+      transparent 1px
+    );
+
+  background-size: 50px 50px;
+
+  pointer-events: none;
+}
+
+
+/* =========================================================
+   CENTER SOFT GLOW
+   ========================================================= */
+
+.auth-center-glow {
+  position: absolute;
+
+  width: 450px;
+  height: 450px;
+
+  left: 50%;
+  top: 50%;
+
+  transform: translate(-50%, -50%);
+
+  border-radius: 50%;
+
+  background:
+    radial-gradient(
+      circle,
+      rgba(255, 106, 0, 0.035) 0%,
+      rgba(139, 92, 246, 0.025) 35%,
+      transparent 70%
+    );
+
+  filter: blur(10px);
+
+  pointer-events: none;
+}
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 768px) {
+
+  .auth-orb {
+    filter: blur(65px);
+    opacity: 0.08;
+  }
+
+  .auth-network {
+    opacity: 0.08;
+  }
+
+  .auth-grid {
+    background-size: 35px 35px;
+    opacity: 0.02;
+  }
+
+  .auth-particle {
+    width: 5px !important;
+    height: 5px !important;
+  }
+
+  .auth-center-glow {
+    width: 300px;
+    height: 300px;
+  }
+}
+
+
+/* =========================================================
+   SMALL MOBILE
+   ========================================================= */
+
+@media (max-width: 480px) {
+
+  .auth-orb {
+    filter: blur(55px);
+    opacity: 0.06;
+  }
+
+  .auth-network {
+    opacity: 0.05;
+  }
+
+  .auth-grid {
+    opacity: 0.015;
+  }
+
+  .auth-center-glow {
+    width: 250px;
+    height: 250px;
+  }
+}
+
+
+/* =========================================================
+   REDUCE MOTION
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+
+  .auth-orb,
+  .auth-particle,
+  .auth-network line {
+    animation: none !important;
+  }
+}
+/* =========================================================
+   AUTH INPUT AUTOFILL FIX
+   Prevent Chrome from changing input background on autofill
+========================================================= */
+
+/* Chrome / Edge autofill */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+.auth-input:-webkit-autofill,
+.auth-input:-webkit-autofill:hover,
+.auth-input:-webkit-autofill:focus,
+.auth-input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+  box-shadow: 0 0 0 1000px #ffffff inset !important;
+  -webkit-text-fill-color: #111827 !important;
+  caret-color: #111827 !important;
+  background-color: #ffffff !important;
+  transition: background-color 9999s ease-in-out 0s;
+}

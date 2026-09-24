@@ -1,14 +1,28 @@
 import { useState } from "react";
-import { ShipWheelIcon } from "lucide-react";
+import {
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  ShieldCheck,
+  Users,
+  GraduationCap,
+  Lightbulb,
+  MessageCircle,
+} from "lucide-react";
 import { Link } from "react-router";
 import { FcGoogle } from "react-icons/fc";
 import useLogin from "../hooks/useLogin";
+import AnimatedAuthBackground from "../components/AnimatedAuthBackground";
 
 const LoginPage = () => {
+  const [showPassword, setShowPassword] = useState(false);
+
   const [loginData, setLoginData] = useState({
     email: "",
     password: "",
   });
+
   const { isPending, error, loginMutation } = useLogin();
 
   const handleLogin = (e) => {
@@ -17,124 +31,513 @@ const LoginPage = () => {
   };
 
   return (
-    <div
-      className="h-screen flex items-center justify-center p-4 sm:p-6 md:p-8"
-      data-theme="forest"
-    >
-      <div className="border border-primary/25 flex flex-col lg:flex-row w-full max-w-5xl mx-auto bg-base-100 rounded-xl shadow-lg overflow-hidden">
-        {/* LOGIN FORM SECTION */}
-        <div className="w-full lg:w-1/2 p-4 sm:p-8 flex flex-col">
-          {/* LOGO */}
-          <div className="mb-4 flex items-center justify-start gap-2">
-            <ShipWheelIcon className="size-9 text-primary" />
-            <span className="text-3xl font-bold font-mono bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary tracking-wider">
-              Connectly
-            </span>
+    <div className="min-h-screen w-full bg-white flex">
+
+      {/* =====================================================
+          LEFT SIDE - LPU CAMPUS
+      ===================================================== */}
+      <div
+        className="hidden lg:flex lg:w-1/2 min-h-screen relative overflow-hidden bg-cover bg-center"
+        style={{
+          backgroundImage: "url('/lpu-campus.png')",
+        }}
+      >
+        {/* Dark overlay */}
+        <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/55 to-black/20" />
+
+        {/* Content */}
+        <div className="relative z-10 w-full min-h-screen p-8 xl:p-12 flex flex-col">
+
+          {/* ================= TOP HEADER ================= */}
+          <div className="flex justify-between items-start">
+
+            {/* LPU LOGO */}
+            <div className="flex items-center gap-5">
+
+              <div className="w-[78px] h-[78px] rounded-full bg-white flex items-center justify-center overflow-hidden shrink-0">
+                <img
+                  src="/lpu-logo.png"
+                  alt="Lovely Professional University"
+                  className="w-full h-full object-contain"
+                />
+              </div>
+
+              <div className="border-r border-white/70 pr-7">
+
+                <h1 className="text-white text-lg xl:text-xl font-bold leading-tight">
+                  LOVELY
+                  <br />
+                  PROFESSIONAL
+                  <br />
+                  UNIVERSITY
+                </h1>
+
+                <p className="text-white/90 text-[11px] italic mt-2 whitespace-nowrap">
+                  Transforming Education Transforming India
+                </p>
+
+              </div>
+
+            </div>
+
+            {/* TOP RIGHT */}
+            <div className="border-l border-white/80 pl-4 text-white text-sm leading-7">
+              <p>Learn</p>
+              <p>Connect</p>
+              <p>Collaborate</p>
+              <p>Grow</p>
+            </div>
+
           </div>
 
-          {/* ERROR MESSAGE */}
-          {error && (
-            <div className="alert alert-error mb-4">
-              <span>
-                {error?.response?.data?.message || error?.message || "Login failed"}
+
+          {/* ================= HERO ================= */}
+          <div className="mt-16 xl:mt-20 max-w-2xl">
+
+            <p className="text-orange-400 text-2xl xl:text-3xl italic font-semibold leading-tight mb-8">
+              Same Campus.
+              <br />
+              Bigger Connections.
+            </p>
+
+            <h2 className="text-white text-4xl xl:text-6xl font-extrabold leading-[1.05]">
+              Meet beyond
+              <br />
+
+              <span className="text-orange-500">
+                your classroom.
               </span>
+            </h2>
+
+            <p className="text-white/90 text-base xl:text-lg mt-6 max-w-2xl leading-relaxed">
+              A community for LPU students to make new friends,
+              find study partners, connect with seniors & juniors,
+              and grow together.
+            </p>
+
+          </div>
+
+
+          {/* ================= FEATURES ================= */}
+          <div className="grid grid-cols-4 gap-2 xl:gap-3 mt-7 max-w-[560px]">
+
+            {/* Make Friends */}
+            <div className="bg-black/35 backdrop-blur-md border border-white/10 rounded-xl p-3 xl:p-4 text-center">
+
+              <Users
+                className="mx-auto text-orange-500 mb-2"
+                size={32}
+              />
+
+              <p className="text-white text-xs xl:text-sm font-medium">
+                Make
+                <br />
+                Friends
+              </p>
+
             </div>
-          )}
 
-          <div className="w-full">
-            <form onSubmit={handleLogin}>
-              <div className="space-y-4">
-                <div>
-                  <h2 className="text-xl font-semibold">Welcome Back</h2>
-                  <p className="text-sm opacity-70">
-                    Sign in to your account to continue your language journey
+
+            {/* Study Partners */}
+            <div className="bg-black/35 backdrop-blur-md border border-white/10 rounded-xl p-3 xl:p-4 text-center">
+
+              <GraduationCap
+                className="mx-auto text-orange-500 mb-2"
+                size={32}
+              />
+
+              <p className="text-white text-xs xl:text-sm font-medium">
+                Find
+                <br />
+                Study Partners
+              </p>
+
+            </div>
+
+
+            {/* Knowledge */}
+            <div className="bg-black/35 backdrop-blur-md border border-white/10 rounded-xl p-3 xl:p-4 text-center">
+
+              <Lightbulb
+                className="mx-auto text-orange-500 mb-2"
+                size={32}
+              />
+
+              <p className="text-white text-xs xl:text-sm font-medium">
+                Share
+                <br />
+                Knowledge
+              </p>
+
+            </div>
+
+
+            {/* Conversations */}
+            <div className="bg-black/35 backdrop-blur-md border border-white/10 rounded-xl p-3 xl:p-4 text-center">
+
+              <MessageCircle
+                className="mx-auto text-orange-500 mb-2"
+                size={32}
+              />
+
+              <p className="text-white text-xs xl:text-sm font-medium">
+                Start
+                <br />
+                Conversations
+              </p>
+
+            </div>
+
+          </div>
+
+
+          {/* ================= BOTTOM ================= */}
+          <div className="mt-auto pb-2">
+
+            <p className="text-white text-xl xl:text-2xl italic font-semibold leading-tight">
+              “Better Students
+              <br />
+              &nbsp;&nbsp;&nbsp;A Brighter Tomorrow”
+            </p>
+
+            <div className="w-40 h-1 bg-orange-500 rotate-[-8deg] mt-3 ml-12" />
+
+            <div className="flex justify-end items-center gap-2 mt-4">
+
+              <span className="text-white text-3xl xl:text-4xl italic">
+                LPU
+              </span>
+
+              <span className="text-orange-500 text-3xl xl:text-4xl">
+                ♥
+              </span>
+
+            </div>
+
+            <p className="text-white/80 text-[9px] xl:text-[10px] tracking-[3px] text-right mt-1">
+              PEOPLE&nbsp;&nbsp; | &nbsp;&nbsp;PURPOSE&nbsp;&nbsp; | &nbsp;&nbsp;POSSIBILITIES
+            </p>
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+      {/* =====================================================
+          RIGHT SIDE - LOGIN
+      ===================================================== */}
+      <div className="relative w-full lg:w-1/2 min-h-screen bg-[#fafafa] flex items-center justify-center px-4 sm:px-6 py-8 overflow-hidden">
+
+        {/* Animated Background */}
+        <AnimatedAuthBackground />
+
+        {/* Login Content */}
+        <div className="relative z-10 w-full max-w-xl">
+
+          {/* Login Card */}
+          <div className="animated-border">
+
+            <div className="bg-white rounded-[25px] px-8 sm:px-14 lg:px-16 py-10 sm:py-12">
+
+              {/* ================= SIGN UP ================= */}
+              <div className="flex justify-end mb-8 sm:mb-10">
+
+                <p className="text-sm text-gray-500">
+                  Don't have an account?{" "}
+
+                  <Link
+                    to="/signup"
+                    className="text-orange-500 font-semibold hover:text-orange-600 transition"
+                  >
+                    Create one
+                  </Link>
+                </p>
+
+              </div>
+
+
+              {/* ================= HEADING ================= */}
+              <div className="text-center mb-8">
+
+                <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900">
+                  Welcome Back
+                </h2>
+
+                <p className="text-gray-500 mt-3 text-sm sm:text-base leading-6">
+                  Sign in to your Connectly account
+                  <br className="hidden sm:block" />
+                  and continue connecting with your community.
+                </p>
+
+              </div>
+
+
+              {/* ================= ERROR ================= */}
+              {error && (
+                <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+
+                  <p className="text-sm text-red-600">
+                    {error?.response?.data?.message ||
+                      error?.message ||
+                      "Login failed"}
                   </p>
-                </div>
 
-                <div className="flex flex-col gap-3">
-                  <div className="form-control w-full space-y-2">
-                    <label className="label">
-                      <span className="label-text">Email</span>
-                    </label>
+                </div>
+              )}
+
+
+              {/* ================= FORM ================= */}
+              <form onSubmit={handleLogin}>
+
+                {/* EMAIL */}
+                <div className="mb-5">
+
+                  <label className="block text-sm font-medium text-gray-800 mb-2">
+                    Email
+                  </label>
+
+                  <div className="relative">
+
+                    <Mail
+                      size={21}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+                    />
+
                     <input
                       type="email"
                       placeholder="hello@example.com"
-                      className="input input-bordered w-full"
                       value={loginData.email}
-                      onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
+                      onChange={(e) =>
+                        setLoginData({
+                          ...loginData,
+                          email: e.target.value,
+                        })
+                      }
+                      className="
+                        w-full
+                        h-14
+                        pl-12
+                        pr-4
+                        rounded-xl
+                        border
+                        border-gray-300
+                        bg-white
+                        text-gray-900
+                        placeholder:text-gray-400
+                        outline-none
+                        transition
+                        focus:border-orange-500
+                        focus:ring-2
+                        focus:ring-orange-100
+                      "
                       required
                     />
+
                   </div>
 
-                  <div className="form-control w-full space-y-2">
-                    <label className="label">
-                      <span className="label-text">Password</span>
-                    </label>
-                    <input
-                      type="password"
-                      placeholder="••••••••"
-                      className="input input-bordered w-full"
-                      value={loginData.password}
-                      onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
-                      required
-                    />
-                  </div>
-
-                  {/* Sign In Button */}
-                  <button type="submit" className="btn btn-primary w-full" disabled={isPending}>
-                    {isPending ? (
-                      <>
-                        <span className="loading loading-spinner loading-xs"></span>
-                        Signing in...
-                      </>
-                    ) : (
-                      "Sign In"
-                    )}
-                  </button>
-
-                  {/* Google Login Button */}
-                  <div className="divider">OR</div>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      window.location.href = `${import.meta.env.VITE_API_BASE_URL}/auth/google`;
-                    }}
-                    className="btn btn-outline w-full gap-2"
-                  >
-                    <FcGoogle className="w-5 h-5" />
-                    Continue with Google
-                  </button>
-
-                  <div className="text-center mt-4">
-                    <p className="text-sm">
-                      Don't have an account?{" "}
-                      <Link to="/signup" className="text-primary hover:underline">
-                        Create one
-                      </Link>
-                    </p>
-                  </div>
                 </div>
-              </div>
-            </form>
+
+
+                {/* PASSWORD */}
+                <div className="mb-2">
+
+                  <label className="block text-sm font-medium text-gray-800 mb-2">
+                    Password
+                  </label>
+
+                  <div className="relative">
+
+                    <Lock
+                      size={21}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+                    />
+
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      value={loginData.password}
+                      onChange={(e) =>
+                        setLoginData({
+                          ...loginData,
+                          password: e.target.value,
+                        })
+                      }
+                      className="
+                        w-full
+                        h-14
+                        pl-12
+                        pr-12
+                        rounded-xl
+                        border
+                        border-gray-300
+                        bg-white
+                        text-gray-900
+                        placeholder:text-gray-400
+                        outline-none
+                        transition
+                        focus:border-orange-500
+                        focus:ring-2
+                        focus:ring-orange-100
+                      "
+                      required
+                    />
+
+                    {/* SHOW / HIDE PASSWORD */}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setShowPassword(!showPassword)
+                      }
+                      className="
+                        absolute
+                        right-4
+                        top-1/2
+                        -translate-y-1/2
+                        text-gray-400
+                        hover:text-gray-600
+                        transition
+                      "
+                      aria-label={
+                        showPassword
+                          ? "Hide password"
+                          : "Show password"
+                      }
+                    >
+                      {showPassword ? (
+                        <EyeOff size={21} />
+                      ) : (
+                        <Eye size={21} />
+                      )}
+                    </button>
+
+                  </div>
+
+                </div>
+
+
+                {/* FORGOT PASSWORD */}
+                <div className="flex justify-end mt-3 mb-6">
+
+                  <Link
+                    to="/forgot-password"
+                    className="text-sm text-orange-500 hover:text-orange-600 hover:underline transition"
+                  >
+                    Forgot password?
+                  </Link>
+
+                </div>
+
+
+                {/* ================= SIGN IN ================= */}
+                <button
+                  type="submit"
+                  disabled={isPending}
+                  className="
+                    w-full
+                    h-14
+                    rounded-xl
+                    bg-gradient-to-r
+                    from-orange-500
+                    to-orange-600
+                    hover:from-orange-600
+                    hover:to-orange-700
+                    disabled:opacity-70
+                    disabled:cursor-not-allowed
+                    text-white
+                    font-semibold
+                    text-base
+                    sm:text-lg
+                    transition
+                    shadow-md
+                    shadow-orange-200
+                    flex
+                    items-center
+                    justify-center
+                  "
+                >
+                  {isPending ? (
+                    <>
+                      <span className="loading loading-spinner loading-sm mr-2" />
+                      Signing in...
+                    </>
+                  ) : (
+                    "Sign In"
+                  )}
+                </button>
+
+
+                {/* ================= OR ================= */}
+                <div className="flex items-center gap-4 my-6">
+
+                  <div className="h-px bg-gray-300 flex-1" />
+
+                  <span className="text-gray-500 text-sm font-medium">
+                    OR
+                  </span>
+
+                  <div className="h-px bg-gray-300 flex-1" />
+
+                </div>
+
+
+                {/* ================= GOOGLE ================= */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.location.href =
+                      `${import.meta.env.VITE_API_BASE_URL}/api/auth/google`;
+                  }}
+                  className="
+                    w-full
+                    h-14
+                    rounded-xl
+                    border
+                    border-gray-300
+                    bg-white
+                    hover:bg-gray-50
+                    transition
+                    flex
+                    items-center
+                    justify-center
+                    gap-3
+                    font-semibold
+                    text-gray-800
+                  "
+                >
+
+                  <FcGoogle className="w-6 h-6" />
+
+                  Continue with Google
+
+                </button>
+
+
+                {/* ================= SECURITY ================= */}
+                <div className="flex items-center justify-center gap-3 mt-7">
+
+                  <ShieldCheck
+                    size={22}
+                    className="text-gray-500"
+                  />
+
+                  <p className="text-sm text-gray-500">
+                    Your data is safe with us
+                  </p>
+
+                </div>
+
+              </form>
+
+            </div>
+
           </div>
+
         </div>
 
-        {/* IMAGE SECTION */}
-        <div className="hidden lg:flex w-full lg:w-1/2 bg-primary/10 items-center justify-center">
-          <div className="max-w-md p-8">
-            <div className="relative aspect-square max-w-sm mx-auto">
-              <img src="/i.png" alt="Language connection illustration" className="w-full h-full" />
-            </div>
-            <div className="text-center space-y-3 mt-6">
-              <h2 className="text-xl font-semibold">Connect with language partners worldwide</h2>
-              <p className="opacity-70">
-                Practice conversations, make friends, and improve your language skills together
-              </p>
-            </div>
-          </div>
-        </div>
       </div>
+
     </div>
   );
 };
