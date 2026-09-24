@@ -10,55 +10,103 @@ import LoginPage from "./pages/LoginPage.jsx";
 import SignUpPage from "./pages/SignUpPage.jsx";
 import ProfileSetupPage from "./pages/ProfileSetupPage.jsx";
 import VerifyEmailPage from "./pages/VerifyEmailPage.jsx";
-
+import StudentProfilePage from "./pages/StudentProfilePage.jsx";
 
 import { Toaster } from "react-hot-toast";
 
 import PageLoader from "./components/PageLoader.jsx";
-import Footer from "./components/Footer.jsx";
-
 import Layout from "./components/Layout.jsx";
+
 import { useThemeStore } from "./store/useThemeStore.js";
 import { NotificationProvider } from "./contexts/NotificationContext.jsx";
 import useAuthUser from "./hooks/useAuthUser.js";
 
+// ==========================================
+// PROTECTED ROUTE
+// ==========================================
+
 const ProtectedRoute = ({ children }) => {
   const { authUser, isLoading } = useAuthUser();
 
-  if (isLoading) return <PageLoader />;
-  if (!authUser) return <Navigate to="/login" replace />;
-  if (!authUser.isOnboarded) return <Navigate to="/profile-setup" replace />;
+  if (isLoading) {
+    return <PageLoader />;
+  }
+
+  if (!authUser) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!authUser.isOnboarded) {
+    return <Navigate to="/profile-setup" replace />;
+  }
 
   return children;
 };
+
+// ==========================================
+// PUBLIC ROUTE
+// ==========================================
 
 const PublicRoute = ({ children }) => {
   const { authUser, isLoading } = useAuthUser();
 
-  if (isLoading) return <PageLoader />;
-  if (authUser) return <Navigate to={authUser.isOnboarded ? "/" : "/profile-setup"} replace />;
+  if (isLoading) {
+    return <PageLoader />;
+  }
+
+  if (authUser) {
+    return (
+      <Navigate
+        to={authUser.isOnboarded ? "/" : "/profile-setup"}
+        replace
+      />
+    );
+  }
 
   return children;
 };
+
+// ==========================================
+// ONBOARDING ROUTE
+// ==========================================
 
 const OnboardingRoute = ({ children }) => {
   const { authUser, isLoading } = useAuthUser();
 
-  if (isLoading) return <PageLoader />;
-  if (!authUser) return <Navigate to="/login" replace />;
-  if (authUser.isOnboarded) return <Navigate to="/" replace />;
+  if (isLoading) {
+    return <PageLoader />;
+  }
+
+  if (!authUser) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (authUser.isOnboarded) {
+    return <Navigate to="/" replace />;
+  }
 
   return children;
 };
+
+// ==========================================
+// APP
+// ==========================================
 
 const App = () => {
   const { theme } = useThemeStore();
 
   return (
-
     <NotificationProvider>
-      <div className="flex flex-col min-h-screen" data-theme={theme}>
+      <div
+        className="flex flex-col min-h-screen"
+        data-theme={theme}
+      >
         <Routes>
+
+          {/* ==========================================
+              AUTH ROUTES
+          ========================================== */}
+
           <Route
             path="/login"
             element={
@@ -78,6 +126,15 @@ const App = () => {
           />
 
           <Route
+            path="/verify-email/:token"
+            element={<VerifyEmailPage />}
+          />
+
+          {/* ==========================================
+              ONBOARDING
+          ========================================== */}
+
+          <Route
             path="/profile-setup"
             element={
               <OnboardingRoute>
@@ -85,6 +142,10 @@ const App = () => {
               </OnboardingRoute>
             }
           />
+
+          {/* ==========================================
+              HOME
+          ========================================== */}
 
           <Route
             path="/"
@@ -97,6 +158,10 @@ const App = () => {
             }
           />
 
+          {/* ==========================================
+              NOTIFICATIONS
+          ========================================== */}
+
           <Route
             path="/notifications"
             element={
@@ -107,6 +172,10 @@ const App = () => {
               </ProtectedRoute>
             }
           />
+
+          {/* ==========================================
+              FRIENDS
+          ========================================== */}
 
           <Route
             path="/friends"
@@ -119,6 +188,10 @@ const App = () => {
             }
           />
 
+          {/* ==========================================
+              MY PROFILE
+          ========================================== */}
+
           <Route
             path="/profile"
             element={
@@ -130,6 +203,25 @@ const App = () => {
             }
           />
 
+          {/* ==========================================
+              STUDENT PROFILE
+          ========================================== */}
+
+          <Route
+            path="/student/:id"
+            element={
+              <ProtectedRoute>
+                <Layout showSidebar={true}>
+                  <StudentProfilePage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* ==========================================
+              CALL
+          ========================================== */}
+
           <Route
             path="/call/:id"
             element={
@@ -138,6 +230,10 @@ const App = () => {
               </ProtectedRoute>
             }
           />
+
+          {/* ==========================================
+              CHAT
+          ========================================== */}
 
           <Route
             path="/chat/:id"
@@ -150,15 +246,12 @@ const App = () => {
             }
           />
 
-          <Route
-            path="/verify-email/:token"
-            element={<VerifyEmailPage />}
-          />
         </Routes>
 
-      <Toaster />
-    </div>
+        <Toaster />
+      </div>
     </NotificationProvider>
   );
 };
+
 export default App;

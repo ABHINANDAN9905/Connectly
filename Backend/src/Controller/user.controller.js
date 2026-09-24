@@ -2,6 +2,25 @@ import User from "../models/User.js";
 import FriendRequest from "../models/FriendRequest.js";
 import { upsertStreamUser } from "../lib/stream.js";
 
+/*
+|--------------------------------------------------------------------------
+| SAFE USER FIELDS
+|--------------------------------------------------------------------------
+*/
+
+const safeUserFields =
+  "-password " +
+  "-verificationToken " +
+  "-verificationTokenExpiry " +
+  "-resetPasswordToken " +
+  "-resetPasswordTokenExpiry";
+
+/*
+|--------------------------------------------------------------------------
+| PROFILE FIELDS
+|--------------------------------------------------------------------------
+*/
+
 const profileFields = [
   "fullName",
   "registrationId",
@@ -16,6 +35,12 @@ const profileFields = [
   "profilePic",
 ];
 
+/*
+|--------------------------------------------------------------------------
+| GET PROFILE UPDATES
+|--------------------------------------------------------------------------
+*/
+
 const getProfileUpdates = (body) => {
   return profileFields.reduce((updates, field) => {
     if (body[field] !== undefined) {
@@ -26,9 +51,17 @@ const getProfileUpdates = (body) => {
   }, {});
 };
 
+/*
+|--------------------------------------------------------------------------
+| GET MY PROFILE
+|--------------------------------------------------------------------------
+*/
+
 export async function getMyProfile(req, res) {
   try {
-    const user = await User.findById(req.user.id).select("-password");
+    const user = await User.findById(req.user.id).select(
+      safeUserFields
+    );
 
     if (!user) {
       return res.status(404).json({
@@ -41,7 +74,10 @@ export async function getMyProfile(req, res) {
       user,
     });
   } catch (error) {
-    console.error("Error in getMyProfile:", error.message);
+    console.error(
+      "Error in getMyProfile:",
+      error.message
+    );
 
     res.status(500).json({
       message: "Internal Server Error",
@@ -49,49 +85,211 @@ export async function getMyProfile(req, res) {
   }
 }
 
+/*
+|--------------------------------------------------------------------------
+| GET USER BY ID
+|--------------------------------------------------------------------------
+| Used for:
+| /student/:id
+|--------------------------------------------------------------------------
+*/
+
+export async function getUserById(req, res) {
+  try {
+    const { id } = req.params;
+
+    const user = await User.findById(id).select(
+      safeUserFields
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Student not found",
+      });
+    }
+
+    // Only explicitly deactivated accounts are hidden.
+    // This also supports older users where isActive may
+    // not exist in the database.
+    if (user.isActive === false) {
+      return res.status(404).json({
+        success: false,
+        message:
+          "This student account is no longer available",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      user,
+    });
+  } catch (error) {
+    console.error(
+      "Error in getUserById:",
+      error.message
+    );
+
+    // Invalid MongoDB ObjectId
+    if (error.name === "CastError") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid student ID",
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+}
+
+/*
+|--------------------------------------------------------------------------
+| UPDATE MY PROFILE
+|--------------------------------------------------------------------------
+*/
+
 export async function updateMyProfile(req, res) {
   try {
     const updates = getProfileUpdates(req.body);
 
-    // Full name validation
-    if (
-      updates.fullName !== undefined &&
-      !updates.fullName.trim()
-    ) {
-      return res.status(400).json({
-        message: "Full name is required",
-      });
+    /*
+    |--------------------------------------------------------------------------
+    | FULL NAME
+    |--------------------------------------------------------------------------
+    */
+
+    if (updates.fullName !== undefined) {
+      if (!updates.fullName.trim()) {
+        return res.status(400).json({
+          message: "Full name is required",
+        });
+      }
+
+      updates.fullName = updates.fullName.trim();
     }
 
-    // Registration ID validation
-    if (
-      updates.registrationId !== undefined &&
-      !updates.registrationId.trim()
-    ) {
-      return res.status(400).json({
-        message: "Registration ID is required",
-      });
+    /*
+    |--------------------------------------------------------------------------
+    | REGISTRATION ID
+    |--------------------------------------------------------------------------
+    */
+
+    if (updates.registrationId !== undefined) {
+      if (!updates.registrationId.trim()) {
+        return res.status(400).json({
+          message: "Registration ID is required",
+        });
+      }
+
+      updates.registrationId = updates.registrationId
+        .trim()
+        .toUpperCase();
     }
 
-    // Skills validation
-    if (
-      updates.skills !== undefined &&
-      !Array.isArray(updates.skills)
-    ) {
-      return res.status(400).json({
-        message: "Skills must be an array",
-      });
+    /*
+    |--------------------------------------------------------------------------
+    | COURSE
+    |--------------------------------------------------------------------------
+    */
+
+    if (updates.course !== undefined) {
+      updates.course = updates.course.trim();
     }
 
-    // Looking For validation
-    if (
-      updates.lookingFor !== undefined &&
-      !Array.isArray(updates.lookingFor)
-    ) {
-      return res.status(400).json({
-        message: "Looking For must be an array",
-      });
+    /*
+    |--------------------------------------------------------------------------
+    | BRANCH
+    |--------------------------------------------------------------------------
+    */
+
+    if (updates.branch !== undefined) {
+      updates.branch = updates.branch.trim();
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | YEAR
+    |--------------------------------------------------------------------------
+    */
+
+    if (updates.year !== undefined) {
+      updates.year = updates.year.trim();
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | SEMESTER
+    |--------------------------------------------------------------------------
+    */
+
+    if (updates.semester !== undefined) {
+      updates.semester = updates.semester.trim();
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | BIO
+    |--------------------------------------------------------------------------
+    */
+
+    if (updates.bio !== undefined) {
+      updates.bio = updates.bio.trim();
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | LOCATION
+    |--------------------------------------------------------------------------
+    */
+
+    if (updates.location !== undefined) {
+      updates.location = updates.location.trim();
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | SKILLS
+    |--------------------------------------------------------------------------
+    */
+
+    if (updates.skills !== undefined) {
+      if (!Array.isArray(updates.skills)) {
+        return res.status(400).json({
+          message: "Skills must be an array",
+        });
+      }
+
+      updates.skills = updates.skills
+        .map((skill) => String(skill).trim())
+        .filter(Boolean);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | LOOKING FOR
+    |--------------------------------------------------------------------------
+    */
+
+    if (updates.lookingFor !== undefined) {
+      if (!Array.isArray(updates.lookingFor)) {
+        return res.status(400).json({
+          message: "Looking For must be an array",
+        });
+      }
+
+      updates.lookingFor = updates.lookingFor
+        .map((item) => String(item).trim())
+        .filter(Boolean);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | USER ID
+    |--------------------------------------------------------------------------
+    */
 
     const userId = req.user.id || req.user._id;
 
@@ -101,23 +299,22 @@ export async function updateMyProfile(req, res) {
       });
     }
 
-    // Normalize Registration ID
-    if (updates.registrationId) {
-      updates.registrationId = updates.registrationId
-        .trim()
-        .toUpperCase();
-    }
+    /*
+    |--------------------------------------------------------------------------
+    | UPDATE USER
+    |--------------------------------------------------------------------------
+    */
 
     const updatedUser = await User.findByIdAndUpdate(
       userId,
-      updates,
+      {
+        $set: updates,
+      },
       {
         new: true,
         runValidators: true,
       }
-    ).select(
-      "-password -verificationToken -verificationTokenExpiry -resetPasswordToken -resetPasswordTokenExpiry"
-    );
+    ).select(safeUserFields);
 
     if (!updatedUser) {
       return res.status(404).json({
@@ -125,7 +322,12 @@ export async function updateMyProfile(req, res) {
       });
     }
 
-    // Update Stream user
+    /*
+    |--------------------------------------------------------------------------
+    | UPDATE STREAM USER
+    |--------------------------------------------------------------------------
+    */
+
     try {
       await upsertStreamUser({
         id: updatedUser._id.toString(),
@@ -141,6 +343,7 @@ export async function updateMyProfile(req, res) {
 
     res.status(200).json({
       success: true,
+      message: "Profile updated successfully",
       user: updatedUser,
     });
   } catch (error) {
@@ -149,7 +352,12 @@ export async function updateMyProfile(req, res) {
       error.message
     );
 
-    // Duplicate registration ID / other unique field
+    /*
+    |--------------------------------------------------------------------------
+    | DUPLICATE KEY
+    |--------------------------------------------------------------------------
+    */
+
     if (error.code === 11000) {
       const duplicateField = Object.keys(
         error.keyPattern || {}
@@ -157,21 +365,54 @@ export async function updateMyProfile(req, res) {
 
       if (duplicateField === "registrationId") {
         return res.status(409).json({
-          message: "This Registration ID is already registered",
+          message:
+            "This Registration ID is already registered",
+        });
+      }
+
+      if (duplicateField === "email") {
+        return res.status(409).json({
+          message: "This email is already registered",
+        });
+      }
+
+      if (duplicateField === "username") {
+        return res.status(409).json({
+          message: "This username is already taken",
         });
       }
 
       return res.status(409).json({
-        message: "A user with this information already exists",
+        message:
+          "A user with this information already exists",
+      });
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | VALIDATION ERROR
+    |--------------------------------------------------------------------------
+    */
+
+    if (error.name === "ValidationError") {
+      return res.status(400).json({
+        message: Object.values(error.errors)
+          .map((err) => err.message)
+          .join(", "),
       });
     }
 
     res.status(500).json({
       message: "Internal Server Error",
-      error: error.message,
     });
   }
 }
+
+/*
+|--------------------------------------------------------------------------
+| DEACTIVATE ACCOUNT
+|--------------------------------------------------------------------------
+*/
 
 export async function deactivateMyAccount(req, res) {
   try {
@@ -198,9 +439,21 @@ export async function deactivateMyAccount(req, res) {
   }
 }
 
+/*
+|--------------------------------------------------------------------------
+| DELETE ACCOUNT
+|--------------------------------------------------------------------------
+*/
+
 export async function deleteMyAccount(req, res) {
   try {
     const userId = req.user.id;
+
+    /*
+    |--------------------------------------------------------------------------
+    | DELETE FRIEND REQUESTS
+    |--------------------------------------------------------------------------
+    */
 
     await FriendRequest.deleteMany({
       $or: [
@@ -208,6 +461,12 @@ export async function deleteMyAccount(req, res) {
         { recipient: userId },
       ],
     });
+
+    /*
+    |--------------------------------------------------------------------------
+    | REMOVE USER FROM FRIEND LISTS
+    |--------------------------------------------------------------------------
+    */
 
     await User.updateMany(
       { friends: userId },
@@ -217,6 +476,12 @@ export async function deleteMyAccount(req, res) {
         },
       }
     );
+
+    /*
+    |--------------------------------------------------------------------------
+    | DELETE USER
+    |--------------------------------------------------------------------------
+    */
 
     await User.findByIdAndDelete(userId);
 
@@ -238,33 +503,36 @@ export async function deleteMyAccount(req, res) {
   }
 }
 
+/*
+|--------------------------------------------------------------------------
+| GET RECOMMENDED USERS
+|--------------------------------------------------------------------------
+*/
+
 export async function getRecommendedUsers(req, res) {
   try {
     const currentUserId = req.user.id;
-    const currentUser = req.user;
+
+    const currentUser = await User.findById(
+      currentUserId
+    ).select("friends");
+
+    if (!currentUser) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
 
     const recommendedUsers = await User.find({
-      $and: [
-        {
-          _id: {
-            $ne: currentUserId,
-          },
-        },
-        {
-          _id: {
-            $nin: currentUser.friends || [],
-          },
-        },
-        {
-          isOnboarded: true,
-        },
-        {
-          isActive: true,
-        },
-      ],
-    }).select(
-      "-password -verificationToken -verificationTokenExpiry -resetPasswordToken -resetPasswordTokenExpiry"
-    );
+      _id: {
+        $ne: currentUserId,
+        $nin: currentUser.friends || [],
+      },
+      isOnboarded: true,
+      isActive: true,
+    })
+      .select(safeUserFields)
+      .sort({ createdAt: -1 });
 
     res.status(200).json(recommendedUsers);
   } catch (error) {
@@ -279,13 +547,32 @@ export async function getRecommendedUsers(req, res) {
   }
 }
 
+/*
+|--------------------------------------------------------------------------
+| GET MY FRIENDS
+|--------------------------------------------------------------------------
+*/
+
 export async function getMyFriends(req, res) {
   try {
     const user = await User.findById(req.user.id)
       .select("friends")
       .populate(
         "friends",
-        "fullName profilePic registrationId course branch year semester skills lookingFor bio location"
+        `
+        fullName
+        username
+        profilePic
+        registrationId
+        course
+        branch
+        year
+        semester
+        skills
+        lookingFor
+        bio
+        location
+        `
       );
 
     if (!user) {
@@ -294,7 +581,7 @@ export async function getMyFriends(req, res) {
       });
     }
 
-    res.status(200).json(user.friends);
+    res.status(200).json(user.friends || []);
   } catch (error) {
     console.error(
       "Error in getMyFriends controller:",
@@ -307,46 +594,85 @@ export async function getMyFriends(req, res) {
   }
 }
 
+/*
+|--------------------------------------------------------------------------
+| SEND FRIEND REQUEST
+|--------------------------------------------------------------------------
+*/
+
 export async function sendFriendRequest(req, res) {
   try {
     const myId = req.user.id;
     const { id: recipientId } = req.params;
 
-    // Prevent sending request to yourself
-    if (myId === recipientId) {
+    /*
+    |--------------------------------------------------------------------------
+    | SELF REQUEST
+    |--------------------------------------------------------------------------
+    */
+
+    if (myId.toString() === recipientId.toString()) {
       return res.status(400).json({
-        message: "You can't send friend request to yourself",
+        message:
+          "You can't send friend request to yourself",
       });
     }
 
-    const recipient = await User.findById(recipientId);
+    /*
+    |--------------------------------------------------------------------------
+    | CHECK RECIPIENT
+    |--------------------------------------------------------------------------
+    */
+
+    const recipient = await User.findOne({
+      _id: recipientId,
+      isActive: true,
+      isOnboarded: true,
+    });
 
     if (!recipient) {
       return res.status(404).json({
-        message: "Recipient not found",
+        message: "Student not found",
       });
     }
 
-    // Check if already friends
-    if (recipient.friends.includes(myId)) {
+    /*
+    |--------------------------------------------------------------------------
+    | ALREADY FRIENDS
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+      recipient.friends?.some(
+        (friendId) =>
+          friendId.toString() === myId.toString()
+      )
+    ) {
       return res.status(400).json({
-        message: "You are already friends with this user",
+        message:
+          "You are already friends with this user",
       });
     }
 
-    // Check existing request
-    const existingRequest = await FriendRequest.findOne({
-      $or: [
-        {
-          sender: myId,
-          recipient: recipientId,
-        },
-        {
-          sender: recipientId,
-          recipient: myId,
-        },
-      ],
-    });
+    /*
+    |--------------------------------------------------------------------------
+    | EXISTING REQUEST
+    |--------------------------------------------------------------------------
+    */
+
+    const existingRequest =
+      await FriendRequest.findOne({
+        $or: [
+          {
+            sender: myId,
+            recipient: recipientId,
+          },
+          {
+            sender: recipientId,
+            recipient: myId,
+          },
+        ],
+      });
 
     if (existingRequest) {
       return res.status(400).json({
@@ -355,12 +681,24 @@ export async function sendFriendRequest(req, res) {
       });
     }
 
-    const friendRequest = await FriendRequest.create({
-      sender: myId,
-      recipient: recipientId,
-    });
+    /*
+    |--------------------------------------------------------------------------
+    | CREATE REQUEST
+    |--------------------------------------------------------------------------
+    */
 
-    res.status(201).json(friendRequest);
+    const friendRequest =
+      await FriendRequest.create({
+        sender: myId,
+        recipient: recipientId,
+        status: "pending",
+      });
+
+    res.status(201).json({
+      success: true,
+      message: "Friend request sent",
+      friendRequest,
+    });
   } catch (error) {
     console.error(
       "Error in sendFriendRequest controller:",
@@ -373,9 +711,21 @@ export async function sendFriendRequest(req, res) {
   }
 }
 
+/*
+|--------------------------------------------------------------------------
+| ACCEPT FRIEND REQUEST
+|--------------------------------------------------------------------------
+*/
+
 export async function acceptFriendRequest(req, res) {
   try {
     const { id: requestId } = req.params;
+
+    /*
+    |--------------------------------------------------------------------------
+    | FIND REQUEST
+    |--------------------------------------------------------------------------
+    */
 
     const friendRequest =
       await FriendRequest.findById(requestId);
@@ -386,9 +736,15 @@ export async function acceptFriendRequest(req, res) {
       });
     }
 
-    // Verify current user is recipient
+    /*
+    |--------------------------------------------------------------------------
+    | CHECK RECIPIENT
+    |--------------------------------------------------------------------------
+    */
+
     if (
-      friendRequest.recipient.toString() !== req.user.id
+      friendRequest.recipient.toString() !==
+      req.user.id.toString()
     ) {
       return res.status(403).json({
         message:
@@ -396,21 +752,35 @@ export async function acceptFriendRequest(req, res) {
       });
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | CHECK STATUS
+    |--------------------------------------------------------------------------
+    */
+
+    if (friendRequest.status !== "pending") {
+      return res.status(400).json({
+        message:
+          "This friend request is no longer pending",
+      });
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | ACCEPT REQUEST
+    |--------------------------------------------------------------------------
+    */
+
     friendRequest.status = "accepted";
 
     await friendRequest.save();
 
-    // Add sender to recipient's friends
-    await User.findByIdAndUpdate(
-      friendRequest.sender,
-      {
-        $addToSet: {
-          friends: friendRequest.recipient,
-        },
-      }
-    );
+    /*
+    |--------------------------------------------------------------------------
+    | ADD SENDER TO RECIPIENT FRIENDS
+    |--------------------------------------------------------------------------
+    */
 
-    // Add recipient to sender's friends
     await User.findByIdAndUpdate(
       friendRequest.recipient,
       {
@@ -420,7 +790,23 @@ export async function acceptFriendRequest(req, res) {
       }
     );
 
+    /*
+    |--------------------------------------------------------------------------
+    | ADD RECIPIENT TO SENDER FRIENDS
+    |--------------------------------------------------------------------------
+    */
+
+    await User.findByIdAndUpdate(
+      friendRequest.sender,
+      {
+        $addToSet: {
+          friends: friendRequest.recipient,
+        },
+      }
+    );
+
     res.status(200).json({
+      success: true,
       message: "Friend request accepted",
     });
   } catch (error) {
@@ -435,23 +821,73 @@ export async function acceptFriendRequest(req, res) {
   }
 }
 
+/*
+|--------------------------------------------------------------------------
+| GET FRIEND REQUESTS
+|--------------------------------------------------------------------------
+*/
+
 export async function getFriendRequests(req, res) {
   try {
-    const incomingReqs = await FriendRequest.find({
-      recipient: req.user.id,
-      status: "pending",
-    }).populate(
-      "sender",
-      "fullName profilePic registrationId course branch year semester skills lookingFor"
-    );
+    /*
+    |--------------------------------------------------------------------------
+    | INCOMING REQUESTS
+    |--------------------------------------------------------------------------
+    */
 
-    const acceptedReqs = await FriendRequest.find({
-      sender: req.user.id,
-      status: "accepted",
-    }).populate(
-      "recipient",
-      "fullName profilePic registrationId course branch year semester skills lookingFor"
-    );
+    const incomingReqs =
+      await FriendRequest.find({
+        recipient: req.user.id,
+        status: "pending",
+      })
+        .populate(
+          "sender",
+          `
+          fullName
+          username
+          profilePic
+          registrationId
+          course
+          branch
+          year
+          semester
+          skills
+          lookingFor
+          bio
+          location
+          `
+        )
+        .sort({ createdAt: -1 });
+
+    /*
+    |--------------------------------------------------------------------------
+    | ACCEPTED REQUESTS
+    |--------------------------------------------------------------------------
+    */
+
+    const acceptedReqs =
+      await FriendRequest.find({
+        sender: req.user.id,
+        status: "accepted",
+      })
+        .populate(
+          "recipient",
+          `
+          fullName
+          username
+          profilePic
+          registrationId
+          course
+          branch
+          year
+          semester
+          skills
+          lookingFor
+          bio
+          location
+          `
+        )
+        .sort({ updatedAt: -1 });
 
     res.status(200).json({
       incomingReqs,
@@ -469,15 +905,37 @@ export async function getFriendRequests(req, res) {
   }
 }
 
+/*
+|--------------------------------------------------------------------------
+| GET OUTGOING FRIEND REQUESTS
+|--------------------------------------------------------------------------
+*/
+
 export async function getOutgoingFriendReqs(req, res) {
   try {
-    const outgoingRequests = await FriendRequest.find({
-      sender: req.user.id,
-      status: "pending",
-    }).populate(
-      "recipient",
-      "fullName profilePic registrationId course branch year semester skills lookingFor"
-    );
+    const outgoingRequests =
+      await FriendRequest.find({
+        sender: req.user.id,
+        status: "pending",
+      })
+        .populate(
+          "recipient",
+          `
+          fullName
+          username
+          profilePic
+          registrationId
+          course
+          branch
+          year
+          semester
+          skills
+          lookingFor
+          bio
+          location
+          `
+        )
+        .sort({ createdAt: -1 });
 
     res.status(200).json(outgoingRequests);
   } catch (error) {

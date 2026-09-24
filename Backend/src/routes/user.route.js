@@ -9,29 +9,82 @@ import {
   getMyProfile,
   getOutgoingFriendReqs,
   getRecommendedUsers,
+  getUserById,
   sendFriendRequest,
   updateMyProfile,
 } from "../Controller/user.controller.js";
+
 import { protectRoute } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
 
+/*
+|--------------------------------------------------------------------------
+| Protect all user routes
+|--------------------------------------------------------------------------
+*/
+
 router.use(protectRoute);
+
+/*
+|--------------------------------------------------------------------------
+| My Profile
+|--------------------------------------------------------------------------
+*/
 
 router.get("/me", getMyProfile);
 
-
 router.put("/me", updateMyProfile);
+
 router.patch("/me/deactivate", deactivateMyAccount);
+
 router.delete("/me", deleteMyAccount);
 
-router.get("/", getRecommendedUsers);
+/*
+|--------------------------------------------------------------------------
+| Friends
+|--------------------------------------------------------------------------
+*/
+
 router.get("/friends", getMyFriends);
 
+/*
+|--------------------------------------------------------------------------
+| Friend Requests
+|--------------------------------------------------------------------------
+*/
+
 router.post("/friend-request/:id", sendFriendRequest);
-router.put("/friend-request/:id/accept", acceptFriendRequest);
+
+router.put(
+  "/friend-request/:id/accept",
+  acceptFriendRequest
+);
 
 router.get("/friend-requests", getFriendRequests);
-router.get("/outgoing-friend-requests", getOutgoingFriendReqs);
+
+router.get(
+  "/outgoing-friend-requests",
+  getOutgoingFriendReqs
+);
+
+/*
+|--------------------------------------------------------------------------
+| Recommended Students
+|--------------------------------------------------------------------------
+*/
+
+router.get("/", getRecommendedUsers);
+
+/*
+|--------------------------------------------------------------------------
+| Get Specific Student
+|--------------------------------------------------------------------------
+| IMPORTANT:
+| Keep this route at the end because "/:id" is dynamic.
+|--------------------------------------------------------------------------
+*/
+
+router.get("/:id", getUserById);
 
 export default router;
