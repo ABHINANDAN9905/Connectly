@@ -1,12 +1,18 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
+
 const userSchema = new mongoose.Schema(
   {
+    // ==========================================
+    // BASIC ACCOUNT INFORMATION
+    // ==========================================
+
     fullName: {
       type: String,
       required: true,
       trim: true,
     },
+
     username: {
       type: String,
       required: true,
@@ -15,75 +21,159 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       minlength: 3,
     },
+
     email: {
       type: String,
+      required: true,
       unique: true,
-      sparse: true,
       lowercase: true,
       trim: true,
     },
+
     phoneNumber: {
       type: String,
       unique: true,
       sparse: true,
       trim: true,
     },
+
     password: {
       type: String,
       minlength: 6,
     },
-    bio: {
-      type: String,
-      default: "",
-    },
+
+    // ==========================================
+    // PROFILE
+    // ==========================================
+
     profilePic: {
       type: String,
       default: "",
     },
-    nativeLanguage: {
+
+    bio: {
       type: String,
       default: "",
+      trim: true,
+      maxlength: 500,
     },
-    learningLanguage: {
-      type: String,
-      default: "",
-    },
+
     location: {
       type: String,
       default: "",
+      trim: true,
     },
+
+    // ==========================================
+    // LPU STUDENT INFORMATION
+    // ==========================================
+
+    registrationId: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      unique: true,
+      sparse: true,
+    },
+
+    course: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+    branch: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+    year: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+    semester: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+    // ==========================================
+    // SKILLS
+    // ==========================================
+
+    skills: {
+      type: [String],
+      default: [],
+    },
+
+    // ==========================================
+    // LOOKING FOR
+    // ==========================================
+
+    lookingFor: {
+      type: [String],
+      default: [],
+    },
+
+    // ==========================================
+    // ACCOUNT STATUS
+    // ==========================================
+
     isOnboarded: {
       type: Boolean,
       default: false,
     },
+
     isActive: {
       type: Boolean,
       default: true,
     },
+
     deactivatedAt: {
       type: Date,
       default: null,
     },
-    isVerified: {         // ← fix: V uppercase
+
+    // ==========================================
+    // EMAIL VERIFICATION
+    // ==========================================
+
+    isVerified: {
       type: Boolean,
       default: false,
     },
+
     verificationToken: {
       type: String,
       default: null,
     },
+
     verificationTokenExpiry: {
       type: Date,
       default: null,
     },
+
+    // ==========================================
+    // PASSWORD RESET
+    // ==========================================
+
     resetPasswordToken: {
       type: String,
       default: null,
     },
+
     resetPasswordTokenExpiry: {
       type: Date,
       default: null,
     },
+
+    // ==========================================
+    // FRIENDS
+    // ==========================================
+
     friends: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -91,21 +181,39 @@ const userSchema = new mongoose.Schema(
       },
     ],
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  }
 );
+
+// ==========================================
+// PASSWORD HASHING
+// ==========================================
+
 userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
+  if (!this.isModified("password")) {
+    return next();
+  }
+
   try {
     const salt = await bcrypt.genSalt(10);
+
     this.password = await bcrypt.hash(this.password, salt);
+
     next();
   } catch (error) {
     next(error);
   }
 });
+
+// ==========================================
+// PASSWORD MATCHING
+// ==========================================
+
 userSchema.methods.matchPassword = async function (enteredPassword) {
-  const isPasswordCorrect = await bcrypt.compare(enteredPassword, this.password);
-  return isPasswordCorrect;
+  return await bcrypt.compare(enteredPassword, this.password);
 };
+
 const User = mongoose.model("User", userSchema);
+
 export default User;
