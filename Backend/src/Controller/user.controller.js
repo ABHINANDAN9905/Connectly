@@ -139,7 +139,6 @@ export async function getUserById(req, res) {
     }
 
     res.status(500).json({
-      success: false,
       message: "Internal Server Error",
     });
   }
@@ -528,6 +527,7 @@ export async function getRecommendedUsers(req, res) {
         $ne: currentUserId,
         $nin: currentUser.friends || [],
       },
+
       isOnboarded: true,
       isActive: true,
     })
@@ -542,6 +542,61 @@ export async function getRecommendedUsers(req, res) {
     );
 
     res.status(500).json({
+      message: "Internal Server Error",
+    });
+  }
+}
+
+/*
+|--------------------------------------------------------------------------
+| SEARCH USERS BY NAME
+|--------------------------------------------------------------------------
+*/
+
+export async function searchUsers(req, res) {
+  try {
+    const { name } = req.query;
+
+    const searchName = name?.trim();
+
+    // No search text
+    if (!searchName) {
+      return res.status(200).json([]);
+    }
+
+    const currentUserId = req.user.id;
+
+    const users = await User.find({
+      // Don't show current user
+      _id: {
+        $ne: currentUserId,
+      },
+
+      // Only active + onboarded students
+      isActive: true,
+      isOnboarded: true,
+
+      // Case-insensitive partial name search
+      fullName: {
+        $regex: searchName,
+        $options: "i",
+      },
+    })
+      .select(safeUserFields)
+      .limit(20)
+      .sort({
+        fullName: 1,
+      });
+
+    return res.status(200).json(users);
+  } catch (error) {
+    console.error(
+      "Error in searchUsers controller:",
+      error.message
+    );
+
+    return res.status(500).json({
+      success: false,
       message: "Internal Server Error",
     });
   }
@@ -611,7 +666,9 @@ export async function sendFriendRequest(req, res) {
     |--------------------------------------------------------------------------
     */
 
-    if (myId.toString() === recipientId.toString()) {
+    if (
+      myId.toString() === recipientId.toString()
+    ) {
       return res.status(400).json({
         message:
           "You can't send friend request to yourself",
@@ -857,7 +914,9 @@ export async function getFriendRequests(req, res) {
           location
           `
         )
-        .sort({ createdAt: -1 });
+        .sort({
+          createdAt: -1,
+        });
 
     /*
     |--------------------------------------------------------------------------
@@ -887,7 +946,9 @@ export async function getFriendRequests(req, res) {
           location
           `
         )
-        .sort({ updatedAt: -1 });
+        .sort({
+          updatedAt: -1,
+        });
 
     res.status(200).json({
       incomingReqs,
@@ -935,7 +996,9 @@ export async function getOutgoingFriendReqs(req, res) {
           location
           `
         )
-        .sort({ createdAt: -1 });
+        .sort({
+          createdAt: -1,
+        });
 
     res.status(200).json(outgoingRequests);
   } catch (error) {

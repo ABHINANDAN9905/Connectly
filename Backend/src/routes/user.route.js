@@ -10,6 +10,7 @@ import {
   getOutgoingFriendReqs,
   getRecommendedUsers,
   getUserById,
+  searchUsers,
   sendFriendRequest,
   updateMyProfile,
 } from "../Controller/user.controller.js";
@@ -67,6 +68,17 @@ router.get(
   "/outgoing-friend-requests",
   getOutgoingFriendReqs
 );
+
+/*
+|--------------------------------------------------------------------------
+| Search Students
+|--------------------------------------------------------------------------
+| IMPORTANT:
+| This route must come BEFORE "/:id"
+|--------------------------------------------------------------------------
+*/
+
+router.get("/search", searchUsers);
 
 /*
 |--------------------------------------------------------------------------

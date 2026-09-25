@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import {
   useMutation,
   useQuery,
@@ -8,6 +10,7 @@ import {
   getOutgoingFriendReqs,
   getRecommendedUsers,
   getUserFriends,
+  searchUsers,
   sendFriendRequest,
 } from "../lib/api";
 
@@ -25,6 +28,7 @@ import {
   SparklesIcon,
   ArrowRightIcon,
   BookOpenIcon,
+  XIcon,
 } from "lucide-react";
 
 import FriendCard from "../components/FriendCard";
@@ -32,6 +36,22 @@ import NoFriendsFound from "../components/NoFriendsFound";
 
 const HomePage = () => {
   const queryClient = useQueryClient();
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // ==========================================
+  // STUDENT SEARCH
+  // ==========================================
+
+  const {
+    data: searchResults = [],
+    isLoading: searchingStudents,
+    isError: searchError,
+  } = useQuery({
+    queryKey: ["userSearch", searchTerm.trim()],
+    queryFn: () => searchUsers(searchTerm.trim()),
+    enabled: searchTerm.trim().length >= 2,
+    retry: false,
+  });
 
   // ==========================================
   // FRIENDS
@@ -235,6 +255,162 @@ const HomePage = () => {
 
             </div>
 
+          </section>
+
+          {/* =====================================================
+              STUDENT SEARCH
+          ===================================================== */}
+
+          <section>
+            <div className="mb-4">
+              <h2 className="text-xl sm:text-2xl font-bold">
+                Search LPU Students
+              </h2>
+              <p className="text-sm opacity-60 mt-1">
+                Search students by name and open their profile.
+              </p>
+            </div>
+
+            <div className="relative max-w-3xl">
+              <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-base-content/50 pointer-events-none" />
+
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search student by name..."
+                className="input input-bordered w-full h-14 pl-12 pr-12 rounded-2xl bg-base-200"
+              />
+
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm("")}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 btn btn-ghost btn-circle btn-sm"
+                  aria-label="Clear search"
+                >
+                  <XIcon className="size-4" />
+                </button>
+              )}
+            </div>
+
+            {searchTerm.trim().length >= 2 && (
+              <div className="mt-4">
+                {searchingStudents ? (
+                  <div className="rounded-2xl border border-base-300 bg-base-200 p-8 text-center">
+                    <span className="loading loading-spinner loading-md text-primary" />
+                    <p className="text-sm opacity-60 mt-3">
+                      Searching students...
+                    </p>
+                  </div>
+                ) : searchError ? (
+                  <div className="rounded-2xl border border-error/20 bg-error/5 p-6 text-center">
+                    <p className="font-semibold">
+                      Couldn't search students
+                    </p>
+                    <p className="text-sm opacity-60 mt-1">
+                      Please try again.
+                    </p>
+                  </div>
+                ) : searchResults.length === 0 ? (
+                  <div className="rounded-2xl border border-base-300 bg-base-200 p-8 text-center">
+                    <SearchIcon className="size-8 mx-auto opacity-40 mb-3" />
+                    <h3 className="font-semibold">
+                      No students found
+                    </h3>
+                    <p className="text-sm opacity-60 mt-1">
+                      Try searching with a different name.
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-sm font-semibold">
+                        Search Results
+                      </p>
+                      <span className="text-xs opacity-50">
+                        {searchResults.length} student
+                        {searchResults.length !== 1 ? "s" : ""}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                      {searchResults.map((user) => (
+                        <Link
+                          key={user._id}
+                          to={`/student/${user._id}`}
+                          className="group rounded-2xl border border-base-300 bg-base-200/70 p-4 hover:border-primary/40 hover:bg-base-200 hover:shadow-lg transition-all"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="avatar shrink-0">
+                              <div className="size-14 rounded-xl overflow-hidden bg-base-300">
+                                {user.profilePic ? (
+                                  <img
+                                    src={user.profilePic}
+                                    alt={user.fullName}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-xl font-bold text-primary bg-primary/10">
+                                    {user.fullName
+                                      ?.charAt(0)
+                                      ?.toUpperCase() || "U"}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="min-w-0">
+                              <h3 className="font-semibold truncate group-hover:text-primary transition-colors">
+                                {user.fullName}
+                              </h3>
+
+                              {(user.course || user.branch) && (
+                                <p className="text-xs opacity-60 truncate mt-1">
+                                  {user.course}
+                                  {user.course && user.branch ? " • " : ""}
+                                  {user.branch}
+                                </p>
+                              )}
+
+                              {(user.year || user.semester) && (
+                                <p className="text-xs opacity-50 mt-1">
+                                  {user.year}
+                                  {user.year && user.semester ? " • " : ""}
+                                  {user.semester
+                                    ? `Semester ${user.semester}`
+                                    : ""}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          {Array.isArray(user.skills) &&
+                            user.skills.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5 mt-3">
+                                {user.skills.slice(0, 3).map((skill) => (
+                                  <span
+                                    key={skill}
+                                    className="badge badge-sm badge-outline"
+                                  >
+                                    {skill}
+                                  </span>
+                                ))}
+
+                                {user.skills.length > 3 && (
+                                  <span className="badge badge-sm badge-ghost">
+                                    +{user.skills.length - 3}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </section>
 
           {/* =====================================================

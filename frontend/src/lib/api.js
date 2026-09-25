@@ -5,7 +5,11 @@ import { axiosInstance } from "./axios";
 // ===============================
 
 export const signup = async (signupData) => {
-  const fallbackUsername = (signupData.email || signupData.fullName || "user")
+  const fallbackUsername = (
+    signupData.email ||
+    signupData.fullName ||
+    "user"
+  )
     .split("@")[0]
     .toLowerCase()
     .replace(/[^a-z0-9_]/g, "")
@@ -123,11 +127,22 @@ export async function deleteMyAccount() {
   return response.data;
 }
 
+// GET RECOMMENDED LPU STUDENTS
 export async function getRecommendedUsers() {
   const response = await axiosInstance.get("/users");
   return response.data;
 }
 
+// SEARCH LPU STUDENTS BY NAME
+export async function searchUsers(name) {
+  const response = await axiosInstance.get(
+    `/users/search?name=${encodeURIComponent(name)}`
+  );
+
+  return response.data;
+}
+
+// GET OUTGOING FRIEND REQUESTS
 export async function getOutgoingFriendReqs() {
   const response = await axiosInstance.get(
     "/users/outgoing-friend-requests"
@@ -136,6 +151,7 @@ export async function getOutgoingFriendReqs() {
   return response.data;
 }
 
+// SEND FRIEND REQUEST
 export async function sendFriendRequest(userId) {
   const response = await axiosInstance.post(
     `/users/friend-request/${userId}`
@@ -144,6 +160,7 @@ export async function sendFriendRequest(userId) {
   return response.data;
 }
 
+// GET FRIEND REQUESTS
 export async function getFriendRequests() {
   const response = await axiosInstance.get(
     "/users/friend-requests"
@@ -152,6 +169,7 @@ export async function getFriendRequests() {
   return response.data;
 }
 
+// ACCEPT FRIEND REQUEST
 export async function acceptFriendRequest(requestId) {
   const response = await axiosInstance.put(
     `/users/friend-request/${requestId}/accept`
