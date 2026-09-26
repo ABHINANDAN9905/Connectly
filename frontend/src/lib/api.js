@@ -33,6 +33,11 @@ export const logout = async () => {
   return response.data;
 };
 
+
+// ===============================
+// PROFILE PICTURE UPLOAD
+// ===============================
+
 export const uploadProfilePicture = async (file) => {
   const formData = new FormData();
 
@@ -50,6 +55,30 @@ export const uploadProfilePicture = async (file) => {
 
   return response.data;
 };
+
+
+// ===============================
+// COVER IMAGE UPLOAD
+// ===============================
+
+export const uploadCoverImage = async (file) => {
+  const formData = new FormData();
+
+  formData.append("coverImage", file);
+
+  const response = await axiosInstance.post(
+    "/auth/upload-cover-image",
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
+
+  return response.data;
+};
+
 
 export const getAuthUser = async () => {
   try {
@@ -76,6 +105,7 @@ export const getAuthUser = async () => {
   }
 };
 
+
 export const completeOnboarding = async (userData) => {
   const response = await axiosInstance.post(
     "/auth/onboarding",
@@ -84,6 +114,7 @@ export const completeOnboarding = async (userData) => {
 
   return response.data;
 };
+
 
 // ===============================
 // USERS
@@ -94,16 +125,19 @@ export async function getUserFriends() {
   return response.data;
 }
 
+
 export async function getMyProfile() {
   const response = await axiosInstance.get("/users/me");
   return response.data;
 }
+
 
 // GET SPECIFIC STUDENT
 export async function getUserById(userId) {
   const response = await axiosInstance.get(`/users/${userId}`);
   return response.data;
 }
+
 
 export async function updateMyProfile(profileData) {
   const response = await axiosInstance.put(
@@ -114,6 +148,7 @@ export async function updateMyProfile(profileData) {
   return response.data;
 }
 
+
 export async function deactivateMyAccount() {
   const response = await axiosInstance.patch(
     "/users/me/deactivate"
@@ -122,16 +157,19 @@ export async function deactivateMyAccount() {
   return response.data;
 }
 
+
 export async function deleteMyAccount() {
   const response = await axiosInstance.delete("/users/me");
   return response.data;
 }
+
 
 // GET RECOMMENDED LPU STUDENTS
 export async function getRecommendedUsers() {
   const response = await axiosInstance.get("/users");
   return response.data;
 }
+
 
 // SEARCH LPU STUDENTS BY NAME
 export async function searchUsers(name) {
@@ -142,6 +180,7 @@ export async function searchUsers(name) {
   return response.data;
 }
 
+
 // GET OUTGOING FRIEND REQUESTS
 export async function getOutgoingFriendReqs() {
   const response = await axiosInstance.get(
@@ -150,6 +189,7 @@ export async function getOutgoingFriendReqs() {
 
   return response.data;
 }
+
 
 // SEND FRIEND REQUEST
 export async function sendFriendRequest(userId) {
@@ -160,6 +200,7 @@ export async function sendFriendRequest(userId) {
   return response.data;
 }
 
+
 // GET FRIEND REQUESTS
 export async function getFriendRequests() {
   const response = await axiosInstance.get(
@@ -169,6 +210,7 @@ export async function getFriendRequests() {
   return response.data;
 }
 
+
 // ACCEPT FRIEND REQUEST
 export async function acceptFriendRequest(requestId) {
   const response = await axiosInstance.put(
@@ -177,6 +219,7 @@ export async function acceptFriendRequest(requestId) {
 
   return response.data;
 }
+
 
 // ===============================
 // CHAT

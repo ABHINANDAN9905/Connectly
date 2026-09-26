@@ -58,6 +58,17 @@ app.use(cookieParser());
 
 
 // ===============================
+// STATIC UPLOADS
+// ===============================
+
+// Serve uploaded profile pictures and cover images
+app.use(
+  "/uploads",
+  express.static(path.join(__dirname, "uploads"))
+);
+
+
+// ===============================
 // API ROUTES
 // ===============================
 

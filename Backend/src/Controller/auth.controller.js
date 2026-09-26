@@ -1,6 +1,7 @@
 import crypto from "crypto";
 
 import { upsertStreamUser } from "../lib/stream.js";
+
 import {
   setAuthCookies,
   clearAuthCookies,
@@ -9,14 +10,12 @@ import {
 import User from "../models/User.js";
 import { sendVerificationEmail } from "../lib/email.js";
 
-
 // ==========================================
 // SAFE USER SELECT
 // ==========================================
 
 const publicUserSelect =
   "-password -refreshToken -emailVerificationToken -passwordResetToken";
-
 
 // ==========================================
 // TOKEN
@@ -25,7 +24,6 @@ const publicUserSelect =
 const createToken = () => {
   return crypto.randomBytes(32).toString("hex");
 };
-
 
 // ==========================================
 // USERNAME
@@ -37,7 +35,6 @@ const normalizeUsername = (username = "") => {
     .toLowerCase()
     .replace(/[^a-z0-9_]/g, "");
 };
-
 
 const generateUsername = async (nameOrEmail = "pinwell") => {
   const base =
@@ -55,7 +52,6 @@ const generateUsername = async (nameOrEmail = "pinwell") => {
   return username;
 };
 
-
 // ==========================================
 // STREAM USER SYNC
 // ==========================================
@@ -68,10 +64,12 @@ const syncStreamUser = async (user) => {
       image: user.profilePic || "",
     });
   } catch (error) {
-    console.log("Error syncing Stream user:", error.message);
+    console.log(
+      "Error syncing Stream user:",
+      error.message
+    );
   }
 };
-
 
 // ==========================================
 // GET SAFE USER
@@ -80,7 +78,6 @@ const syncStreamUser = async (user) => {
 const getSafeUser = async (userId) => {
   return User.findById(userId).select(publicUserSelect);
 };
-
 
 // ==========================================
 // REGISTER
@@ -182,7 +179,10 @@ export async function register(req, res) {
         "Registration successful. Please check your email and verify your account.",
     });
   } catch (error) {
-    console.log("Error in register controller:", error);
+    console.log(
+      "Error in register controller:",
+      error
+    );
 
     return res.status(500).json({
       message: "Internal Server Error",
@@ -190,9 +190,7 @@ export async function register(req, res) {
   }
 }
 
-
 export const signup = register;
-
 
 // ==========================================
 // LOGIN
@@ -207,11 +205,13 @@ export async function login(req, res) {
       password,
     } = req.body;
 
-    const identifier = email || username || phoneNumber;
+    const identifier =
+      email || username || phoneNumber;
 
     if (!identifier || !password) {
       return res.status(400).json({
-        message: "Identifier and password are required",
+        message:
+          "Identifier and password are required",
       });
     }
 
@@ -280,7 +280,6 @@ export async function login(req, res) {
   }
 }
 
-
 // ==========================================
 // LOGOUT
 // ==========================================
@@ -302,7 +301,6 @@ export async function logout(req, res) {
     });
   }
 }
-
 
 // ==========================================
 // UPLOAD PROFILE PICTURE
@@ -330,6 +328,12 @@ export async function uploadProfilePicture(req, res) {
       }
     ).select(publicUserSelect);
 
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
     return res.status(200).json({
       success: true,
       profilePic,
@@ -347,6 +351,55 @@ export async function uploadProfilePicture(req, res) {
   }
 }
 
+// ==========================================
+// UPLOAD COVER IMAGE
+// ==========================================
+
+export async function uploadCoverImage(req, res) {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        message: "Cover image is required",
+      });
+    }
+
+    const coverImage = `${req.protocol}://${req.get(
+      "host"
+    )}/uploads/cover-images/${req.file.filename}`;
+
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      {
+        coverImage,
+      },
+      {
+        new: true,
+      }
+    ).select(publicUserSelect);
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Cover image uploaded successfully",
+      coverImage,
+      user,
+    });
+  } catch (error) {
+    console.error(
+      "Cover image upload error:",
+      error
+    );
+
+    return res.status(500).json({
+      message: "Internal Server Error",
+    });
+  }
+}
 
 // ==========================================
 // LPU STUDENT ONBOARDING
@@ -368,8 +421,8 @@ export async function onboard(req, res) {
       bio,
       location,
       profilePic,
+      coverImage,
     } = req.body;
-
 
     // ======================================
     // VALIDATION
@@ -412,7 +465,6 @@ export async function onboard(req, res) {
       missingFields.push("lookingFor");
     }
 
-
     if (missingFields.length > 0) {
       return res.status(400).json({
         message:
@@ -421,13 +473,13 @@ export async function onboard(req, res) {
       });
     }
 
-
     // ======================================
     // REGISTRATION ID CHECK
     // ======================================
 
     const existingStudent = await User.findOne({
-      registrationId: registrationId.trim().toUpperCase(),
+      registrationId:
+        registrationId.trim().toUpperCase(),
       _id: { $ne: userId },
     });
 
@@ -437,7 +489,6 @@ export async function onboard(req, res) {
           "This Registration ID is already registered",
       });
     }
-
 
     // ======================================
     // UPDATE USER
@@ -476,6 +527,10 @@ export async function onboard(req, res) {
             ? { profilePic }
             : {}),
 
+          ...(coverImage !== undefined
+            ? { coverImage }
+            : {}),
+
           isOnboarded: true,
         },
         {
@@ -483,7 +538,6 @@ export async function onboard(req, res) {
           runValidators: true,
         }
       ).select(publicUserSelect);
-
 
     // ======================================
     // USER NOT FOUND
@@ -495,13 +549,11 @@ export async function onboard(req, res) {
       });
     }
 
-
     // ======================================
     // UPDATE STREAM USER
     // ======================================
 
     await syncStreamUser(updatedUser);
-
 
     // ======================================
     // RESPONSE
@@ -509,10 +561,10 @@ export async function onboard(req, res) {
 
     return res.status(200).json({
       success: true,
-      message: "LPU student profile completed successfully",
+      message:
+        "LPU student profile completed successfully",
       user: updatedUser,
     });
-
   } catch (error) {
     console.error(
       "LPU onboarding error:",
@@ -532,7 +584,6 @@ export async function onboard(req, res) {
     });
   }
 }
-
 
 // ==========================================
 // VERIFY EMAIL
