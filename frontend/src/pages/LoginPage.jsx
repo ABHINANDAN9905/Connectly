@@ -14,6 +14,7 @@ import { Link } from "react-router";
 import { FcGoogle } from "react-icons/fc";
 import useLogin from "../hooks/useLogin";
 import AnimatedAuthBackground from "../components/AnimatedAuthBackground";
+import { API_BASE_URL } from "../lib/axios";
 
 const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -487,7 +488,7 @@ const LoginPage = () => {
                   type="button"
                   onClick={() => {
                     window.location.href =
-                      `${import.meta.env.VITE_API_BASE_URL}/api/auth/google`;
+                      `${import.meta.env.VITE_API_BASE_URL}/auth/google`;
                   }}
                   className="
                     w-full
